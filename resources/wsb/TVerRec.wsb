@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 <Configuration Name="TVerRec">
   <Networking>Default</Networking>
   <MappedFolders>
@@ -11,18 +10,4 @@
     <Command>C:\users\WDAGUtilityAccount\setup\setup.cmd</Command>
   </LogonCommand>
   <MemoryInMB>4096</MemoryInMB>
-=======
-<Configuration Name="TVerRec">
-  <Networking>Default</Networking>
-  <MappedFolders>
-    <MappedFolder>
-      <HostFolder>.\setup</HostFolder>
-      <SandboxFolder>C:\users\WDAGUtilityAccount\setup</SandboxFolder>
-    </MappedFolder>
-  </MappedFolders>
-  <LogonCommand>
-    <Command>C:\users\WDAGUtilityAccount\setup\setup.cmd</Command>
-  </LogonCommand>
-  <MemoryInMB>4096</MemoryInMB>
->>>>>>> 7d8dd8d50f67eab0736d51f4b046297c1e0f86b8
 </Configuration>
