@@ -137,22 +137,20 @@ function Save-UserSetting {
 
 			switch ($true) {
 				#出力しない
-				($settingBox.Text -in @('', 'デフォルト値', '未設定')) { continue }
+				(($settingBox.Text -eq '') -or ($settingBox.Text -eq 'デフォルト値') -or ($settingBox.Text -eq '未設定')) { break }
 				#True/False
-				($settingBox.Text -eq 'する') { $newSetting += ('{0} = {1}' -f $settingAttribute, '$true') ; continue }
-				($settingBox.Text -eq 'しない') { $newSetting += ('{0} = {1}' -f $settingAttribute, '$false') ; continue }
+				($settingBox.Text -eq 'する') { $newSetting += ('{0} = {1}' -f $settingAttribute, '$true') ; break }
+				($settingBox.Text -eq 'しない') { $newSetting += ('{0} = {1}' -f $settingAttribute, '$false') ; break }
 				#数値
-				( [Int]::TryParse($settingBox.Text, [ref]$null) ) { $newSetting += ('{0} = {1}' -f $settingAttribute, $settingBox.Text) ; continue }
+				( [Int]::TryParse($settingBox.Text, [ref]$null) ) { $newSetting += ('{0} = {1}' -f $settingAttribute, $settingBox.Text) ; break }
 				#Powershellの変数や関数等を含む場合はシングルクォーテーション不要
 				($local:settingBox.Text.Contains('$') `
 					-or $local:settingBox.Text.Contains('{') `
 					-or $local:settingBox.Text.Contains('(') `
 					-or $local:settingBox.Text.Contains('}') `
-					-or $local:settingBox.Text.Contains(')') ) {
-					$newSetting += ('{0} = {1}' -f $settingAttribute, $settingBox.Text) ; continue
-				}
+					-or $local:settingBox.Text.Contains(')') ) { $newSetting += ('{0} = {1}' -f $settingAttribute, $settingBox.Text) ; break }
 				#デフォルトはシングルクォーテーション必要
-				default { $newSetting += ('{0} = ''{1}''' -f $settingAttribute, $settingBox.Text) ; continue }
+				default { $newSetting += ('{0} = ''{1}''' -f $settingAttribute, $settingBox.Text) ; break }
 			}
 		}
 	}

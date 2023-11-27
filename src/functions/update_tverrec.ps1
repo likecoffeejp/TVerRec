@@ -70,39 +70,6 @@ function Move-Files() {
 	}
 }
 
-#----------------------------------------------------------------------
-#存在したら削除
-#----------------------------------------------------------------------
-Function Remove-IfExist {
-	param (
-		[Parameter(Mandatory = $true, Position = 0)][string]$path
-	)
-	if (Test-Path $path) { Remove-Item -LiteralPath $path -Force -Recurse }
-}
-
-#----------------------------------------------------------------------
-#存在したらリネーム
-#----------------------------------------------------------------------
-Function Rename-IfExist {
-	param (
-		[Parameter(Mandatory = $true, Position = 0)][string]$path,
-		[Parameter(Mandatory = $true, Position = 1)][string]$newname
-	)
-	if (Test-Path $path -PathType Leaf) { Rename-Item -LiteralPath $path -NewName $newname -Force }
-}
-
-#----------------------------------------------------------------------
-#存在したら移動
-#----------------------------------------------------------------------
-Function Move-IfExist {
-	param (
-		[Parameter(Mandatory = $true, Position = 0)][string]$path,
-		[Parameter(Mandatory = $true, Position = 1)][string]$destination
-	)
-	if (Test-Path $path -PathType Leaf) { Move-Item -LiteralPath $path -Destination $destination -Force }
-
-}
-
 #━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #環境設定
 #━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -187,59 +154,95 @@ Write-Output ('')
 Write-Output ('-----------------------------------------------------------------')
 Write-Output ('過去のバージョンで使用していたファイルを削除、または移行します')
 #tver.lockをhistory.lockに移行(v2.6.5→v2.6.6)
-Remove-IfExist (Join-Path $script:scriptRoot '../db/tver.lock')
+if (Test-Path (Join-Path $script:scriptRoot '../db/tver.lock') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../db/tver.lock') -Force }
 
 #tver.sample.csvをhistory.sample.csvに移行(v2.6.5→v2.6.6)
-Remove-IfExist (Join-Path $script:scriptRoot '../db/tver.sample.csv')
+if (Test-Path (Join-Path $script:scriptRoot '../db/tver.sample.csv') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../db/tver.sample.csv') -Force }
 
 #tver.csvをhistory.csvに移行(v2.6.5→v2.6.6)
-Rename-IfExist (Join-Path $script:scriptRoot '../db/tver.csv') -NewName 'history.csv'
+if (Test-Path (Join-Path $script:scriptRoot '../db/tver.csv') -PathType Leaf)
+{ Rename-Item -LiteralPath (Join-Path $script:scriptRoot '../db/tver.csv') -NewName 'history.csv' -Force }
 
 #*.batを*.cmdに移行(v2.6.9→v2.7.0)
-Remove-IfExist (Join-Path $script:scriptRoot '../win/*.bat')
+if (Test-Path (Join-Path $script:scriptRoot '../win/*.bat') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../win/*.bat') -Force }
 
 #TVerRec-Logo-Low.pngを削除(v2.7.5→v2.7.6)
-Remove-IfExist (Join-Path $script:scriptRoot '../img/TVerRec-Logo-Low.png')
+if (Test-Path (Join-Path $script:scriptRoot '../img/TVerRec-Logo-Low.png') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../img/TVerRec-Logo-Low.png') -Force }
 
 #ダウンロード用のps1をリネーム(v2.7.5→v2.7.6)
-Remove-IfExist (Join-Path $script:scriptRoot 'tverrec_bulk.ps1')
-Remove-IfExist (Join-Path $script:scriptRoot 'tverrec_list.ps1')
-Remove-IfExist (Join-Path $script:scriptRoot 'tverrec_single.ps1')
-Remove-IfExist (Join-Path $script:scriptRoot '../win/a.download_video.cmd')
-Remove-IfExist (Join-Path $script:scriptRoot '../win/y.tverrec_list.cmd')
-Remove-IfExist (Join-Path $script:scriptRoot '../win/z.download_single_video.cmd')
-Remove-IfExist (Join-Path $script:scriptRoot '../unix/a.download_video.sh')
-Remove-IfExist (Join-Path $script:scriptRoot '../unix/y.tverrec_list.sh')
-Remove-IfExist (Join-Path $script:scriptRoot '../unix/z.download_single_video.sh')
+if (Test-Path (Join-Path $script:scriptRoot 'tverrec_bulk.ps1') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot 'tverrec_bulk.ps1') -Force }
+if (Test-Path (Join-Path $script:scriptRoot 'tverrec_list.ps1') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot 'tverrec_list.ps1') -Force }
+if (Test-Path (Join-Path $script:scriptRoot 'tverrec_single.ps1') -PathType Leaf)
+{ Remove-Item -LiteralPath Join-Path $script:scriptRoot 'tverrec_single.ps1' -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../win/a.download_video.cmd') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../win/a.download_video.cmd') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../win/y.tverrec_list.cmd') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../win/y.tverrec_list.cmd') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../win/z.download_single_video.cmd') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../win/z.download_single_video.cmd') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../unix/a.download_video.sh') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../unix/a.download_video.sh') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../unix/y.tverrec_list.sh') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../unix/y.tverrec_list.sh') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../unix/z.download_single_video.sh') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../unix/z.download_single_video.sh') -Force }
 
 #ダウンロード用のps1をリネーム(v2.7.6→v2.7.7)
-Remove-IfExist (Join-Path $script:scriptRoot '../.wsb/setup/TVerRec')
+if (Test-Path (Join-Path $script:scriptRoot '../.wsb/setup/TVerRec'))
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../.wsb/setup/TVerRec') -Recurse -Force }
 
 #dev containerの廃止(v2.8.0→v2.8.1)
-Remove-IfExist (Join-Path $script:scriptRoot '../.devcontainer')
+if (Test-Path (Join-Path $script:scriptRoot '../.devcontainer'))
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../.devcontainer') -Recurse -Force }
 
 #youtube-dlの旧更新スクリプトの削除(v2.8.1→v2.8.2)
-Remove-IfExist (Join-Path $script:scriptRoot 'functions/update_yt-dlp.ps1')
-Remove-IfExist (Join-Path $script:scriptRoot 'functions/update_ytdl-patched.ps1')
+if (Test-Path (Join-Path $script:scriptRoot 'functions/update_yt-dlp.ps1') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot 'functions/update_yt-dlp.ps1') -Force }
+if (Test-Path (Join-Path $script:scriptRoot 'functions/update_ytdl-patched.ps1') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot 'functions/update_ytdl-patched.ps1') -Force }
 
 #フォルダ体系変更(v2.9.7→v2.9.8)
-Move-IfExist (Join-Path $script:scriptRoot '../list/list.csv') -Destination (Join-Path $script:scriptRoot '../db/list.csv')
-Remove-IfExist (Join-Path $script:scriptRoot '../.wsb')
-Remove-IfExist (Join-Path $script:scriptRoot '../colab')
-Remove-IfExist (Join-Path $script:scriptRoot '../docker')
-Remove-IfExist (Join-Path $script:scriptRoot '../list')
-Remove-IfExist (Join-Path $script:scriptRoot '../img')
-Remove-IfExist (Join-Path $script:scriptRoot '../lib')
-Remove-IfExist (Join-Path $script:scriptRoot '../conf/ignore.sample.conf')
-Remove-IfExist (Join-Path $script:scriptRoot '../conf/keyword.sample.conf')
-Remove-IfExist (Join-Path $script:scriptRoot '../db/history.sample.csv')
-Remove-IfExist (Join-Path $script:scriptRoot '../db/history.lock')
-Remove-IfExist (Join-Path $script:scriptRoot '../db/ignore.lock')
-Remove-IfExist (Join-Path $script:scriptRoot '../db/list.lock')
-Remove-IfExist (Join-Path $script:scriptRoot '../resources/Icon.b64')
-Remove-IfExist (Join-Path $script:scriptRoot '../resources/Logo.b64')
-Remove-IfExist (Join-Path $script:scriptRoot '../resources/TVerRecMain.xaml')
-Remove-IfExist (Join-Path $script:scriptRoot '../resources/TVerRecSetting.xaml')
+if (Test-Path (Join-Path $script:scriptRoot '../list/list.csv') -PathType Leaf)
+{ Move-Item -LiteralPath (Join-Path $script:scriptRoot '../list/list.csv') -Destination (Join-Path $script:scriptRoot '../db/list.csv') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../.wsb'))
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../.wsb') -Recurse -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../colab'))
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../colab') -Recurse -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../docker'))
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../docker') -Recurse -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../list'))
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../list') -Recurse -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../img'))
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../img') -Recurse -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../lib'))
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../lib') -Recurse -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../conf/ignore.sample.conf') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../conf/ignore.sample.conf') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../conf/keyword.sample.conf') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../conf/keyword.sample.conf') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../db/history.sample.csv') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../db/history.sample.csv') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../db/history.lock') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../db/history.lock') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../db/ignore.lock') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../db/ignore.lock') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../db/list.lock') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../db/list.lock') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../resources/Icon.b64') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../resources/Icon.b64') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../resources/Logo.b64') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../resources/Logo.b64') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../resources/TVerRecMain.xaml') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../resources/TVerRecMain.xaml') -Force }
+if (Test-Path (Join-Path $script:scriptRoot '../resources/TVerRecSetting.xaml') -PathType Leaf)
+{ Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../resources/TVerRecSetting.xaml') -Force }
+
 
 #実行権限の付与
 if (!$IsWindows) {

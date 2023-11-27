@@ -41,7 +41,9 @@ function Expand-Zip {
 		Write-Verbose ('{0}を{1}に展開します' -f $path, $destination)
 		[System.IO.Compression.ZipFile]::ExtractToDirectory($path, $destination, $true)
 		Write-Verbose ('{0}を展開しました' -f $path)
-	} else { Write-Error ('{0}が見つかりません' -f $path) }
+	} else {
+		Write-Error ('{0}が見つかりません' -f $path)
+	}
 }
 
 #━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

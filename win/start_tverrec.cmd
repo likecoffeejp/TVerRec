@@ -50,7 +50,6 @@ echo %myPID% > %PIDFile% 2> nul
 
 pwsh -NoProfile -ExecutionPolicy Unrestricted "..\src\loop.ps1"
 
-pause
 exit
 
 :INSTALL

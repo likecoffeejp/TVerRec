@@ -457,7 +457,7 @@ function Out-Msg-Color {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $false, Position = 0)][Object]$text = '',
+		[Parameter(Mandatory = $false, Position = 0)][Object]$text,
 		[Parameter(Mandatory = $false, Position = 1)][ConsoleColor]$fg,
 		[Parameter(Mandatory = $false, Position = 2)][ConsoleColor]$bg,
 		[Parameter(Mandatory = $false, Position = 3)][Boolean]$noNL
@@ -468,8 +468,10 @@ function Out-Msg-Color {
 	$prevFg = $host.UI.RawUI.ForegroundColor
 	$prevBg = $host.UI.RawUI.BackgroundColor
 
-	if ($fg) { $host.UI.RawUI.ForegroundColor = $fg }
-	if ($bg) { $host.UI.RawUI.BackgroundColor = $bg }
+	if ($foregroundColor) { $host.UI.RawUI.ForegroundColor = $fg }
+	if ($backgroundColor) { $host.UI.RawUI.BackgroundColor = $bg }
+
+	if ($null -eq $text) { $text = '' }
 
 	$writeHostParams = @{
 		Object    = $text
@@ -489,6 +491,21 @@ function Out-Msg-Color {
 if (($script:disableToastNotification -ne $true) -and ($IsWindows)) { Import-Module StartLayout -SkipEditionCheck }
 
 #----------------------------------------------------------------------
+#Windows Application ID取得
+#----------------------------------------------------------------------
+function Get-WindowsAppId {
+	[OutputType([String])]
+	Param ()
+
+	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
+
+	$appId = (Get-StartApps | Where-Object { $_.Name -cmatch 'PowerShell*' })[0].AppId
+
+	return $appId
+}
+
+
+#----------------------------------------------------------------------
 #トースト表示
 #----------------------------------------------------------------------
 function Show-Toast {
@@ -496,9 +513,9 @@ function Show-Toast {
 	[OutputType([System.Void])]
 	Param (
 		[Parameter(Mandatory = $true, Position = 0)][String]$text1,
-		[Parameter(Mandatory = $false, Position = 1)][String]$text2 = '',
-		[Parameter(Mandatory = $false, Position = 2)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
-		[Parameter(Mandatory = $false, Position = 4)][Boolean]$silent = $false
+		[Parameter(Mandatory = $false, Position = 1)][String]$text2,
+		[Parameter(Mandatory = $false, Position = 2)][ValidateSet('Short', 'Long')][String]$duration = 'short',
+		[Parameter(Mandatory = $false, Position = 4)][Boolean]$silent
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -528,24 +545,25 @@ function Show-Toast {
     $toastSoundElement
 </toast>
 "@
+				$appID = Get-WindowsAppId
 				$toastXML = New-Object Windows.Data.Xml.Dom.XmlDocument
 				$toastXML.LoadXml($toastProgressContent)
 				$toastNotification = New-Object Windows.UI.Notifications.ToastNotification $toastXML
-				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($script:appID).Show($toastNotification)
-				continue
+				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appID).Show($toastNotification)
+				break
 			}
 			$IsLinux {
 				if (Get-Command notify-send -ea SilentlyContinue) { & notify-send -a $script:appName -t 5000 -i $script:toastAppLogo $text1 $text2 }
-				continue
+				break
 			}
 			$IsMacOS {
 				if (Get-Command osascript -ea SilentlyContinue) {
 					$toastParams = ('display notification "{0}" with title "{1}" subtitle "{2}" sound name "Blow"' -f $text2, $script:appName, $text1)
 					$toastParams | & osascript
 				}
-				continue
+				break
 			}
-			default { continue }
+			default { break }
 		}
 	}
 }
@@ -560,12 +578,12 @@ function Show-ProgressToast {
 	[OutputType([System.Void])]
 	Param (
 		[Parameter(Mandatory = $true, Position = 0)][String]$text1,
-		[Parameter(Mandatory = $false, Position = 1)][String]$text2 = '',
-		[Parameter(Mandatory = $false, Position = 2)][String]$workDetail = '',
+		[Parameter(Mandatory = $false, Position = 1)][String]$text2,
+		[Parameter(Mandatory = $false, Position = 2)][String]$workDetail,
 		[Parameter(Mandatory = $true, Position = 3)][String]$tag,
 		[Parameter(Mandatory = $true, Position = 4)][String]$group,
-		[Parameter(Mandatory = $false, Position = 5)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
-		[Parameter(Mandatory = $false, Position = 6)][Boolean]$silent = $false
+		[Parameter(Mandatory = $false, Position = 5)][ValidateSet('Short', 'Long')][String]$duration = 'short',
+		[Parameter(Mandatory = $false, Position = 6)][Boolean]$silent
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -597,6 +615,7 @@ function Show-ProgressToast {
     $toastSoundElement
 </toast>
 "@
+				$appID = Get-WindowsAppId
 				$toastXML = New-Object Windows.Data.Xml.Dom.XmlDocument
 				$toastXML.LoadXml($toastContent)
 				$toast = New-Object Windows.UI.Notifications.ToastNotification $toastXML
@@ -609,21 +628,21 @@ function Show-ProgressToast {
 				$toastData.Add('progressStatus', '')
 				$toast.Data = [Windows.UI.Notifications.NotificationData]::new($toastData)
 				$toast.Data.SequenceNumber = 1
-				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($script:appID).Show($toast)
-				continue
+				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appID).Show($toast)
+				break
 			}
 			$IsLinux {
 				if (Get-Command notify-send -ea SilentlyContinue) { & notify-send -a $script:appName -t 5000 -i $script:toastAppLogo $text1 $text2 }
-				continue
+				break
 			}
 			$IsMacOS {
 				if (Get-Command osascript -ea SilentlyContinue) {
 					$toastParams = ('display notification "{0}" with title "{1}" subtitle "{2}" sound name "Blow"' -f $text2, $script:appName, $text1)
 					$toastParams | & osascript
 				}
-				continue
+				break
 			}
-			default { continue }
+			default { break }
 		}
 	}
 }
@@ -636,10 +655,10 @@ function Update-ProgressToast {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $false, Position = 0)][String]$title = '',
+		[Parameter(Mandatory = $false, Position = 0)][String]$title,
 		[Parameter(Mandatory = $true, Position = 1)][String]$rate,
-		[Parameter(Mandatory = $false, Position = 2)][String]$leftText = '',
-		[Parameter(Mandatory = $false, Position = 3)][String]$rightText = '',
+		[Parameter(Mandatory = $false, Position = 2)][String]$leftText,
+		[Parameter(Mandatory = $false, Position = 3)][String]$rightText,
 		[Parameter(Mandatory = $true, Position = 4)][String]$tag,
 		[Parameter(Mandatory = $true, Position = 5)][String]$group
 	)
@@ -649,6 +668,7 @@ function Update-ProgressToast {
 	if ($script:disableToastNotification -ne $true) {
 		switch ($true) {
 			$IsWindows {
+				$appID = Get-WindowsAppId
 				$toastData = New-Object 'system.collections.generic.dictionary[String,string]'
 				$toastData.Add('progressTitle', $script:appName)
 				$toastData.Add('progressValue', $rate)
@@ -656,12 +676,12 @@ function Update-ProgressToast {
 				$toastData.Add('progressStatus', $leftText)
 				$toastProgressData = [Windows.UI.Notifications.NotificationData]::new($toastData)
 				$toastProgressData.SequenceNumber = 2
-				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($script:appID).Update($toastProgressData, $tag , $group)
-				continue
+				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appID).Update($toastProgressData, $tag , $group)
+				break
 			}
-			$IsLinux { continue }
-			$IsMacOS { continue }
-			default { continue }
+			$IsLinux { break }
+			$IsMacOS { break }
+			default { break }
 		}
 	}
 }
@@ -675,13 +695,13 @@ function Show-ProgressToast2 {
 	[OutputType([System.Void])]
 	Param (
 		[Parameter(Mandatory = $true, Position = 0)][String]$text1,
-		[Parameter(Mandatory = $false, Position = 1)][String]$text2 = '',
-		[Parameter(Mandatory = $false, Position = 2)][String]$detail1 = '',
-		[Parameter(Mandatory = $false, Position = 3)][String]$detail2 = '',
+		[Parameter(Mandatory = $false, Position = 1)][String]$text2,
+		[Parameter(Mandatory = $false, Position = 2)][String]$detail1,
+		[Parameter(Mandatory = $false, Position = 3)][String]$detail2,
 		[Parameter(Mandatory = $true, Position = 4)][String]$tag,
 		[Parameter(Mandatory = $true, Position = 5)][String]$group,
-		[Parameter(Mandatory = $false, Position = 6)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
-		[Parameter(Mandatory = $false, Position = 7)][Boolean]$silent = $false
+		[Parameter(Mandatory = $false, Position = 6)][ValidateSet('Short', 'Long')][String]$duration,
+		[Parameter(Mandatory = $false, Position = 7)][Boolean]$silent
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -714,6 +734,7 @@ function Show-ProgressToast2 {
 	$toastSoundElement
 </toast>
 "@
+			$appID = Get-WindowsAppId
 			$toastXML = New-Object Windows.Data.Xml.Dom.XmlDocument
 			$toastXML.LoadXml($toastContent)
 			$toast = New-Object Windows.UI.Notifications.ToastNotification $toastXML
@@ -730,21 +751,21 @@ function Show-ProgressToast2 {
 			$toastData.Add('progressStatus2', '')
 			$toast.Data = [Windows.UI.Notifications.NotificationData]::new($toastData)
 			$toast.Data.SequenceNumber = 1
-			$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($script:appID).Show($toast)
-			continue
+			$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appID).Show($toast)
+			break
 		}
 		$IsLinux {
 			if (Get-Command notify-send -ea SilentlyContinue) { & notify-send -a $script:appName -t 5000 -i $script:toastAppLogo $text1 $text2 }
-			continue
+			break
 		}
 		$IsMacOS {
 			if (Get-Command osascript -ea SilentlyContinue) {
 				$toastParams = ('display notification "{0}" with title "{1}" subtitle "{2}" sound name "Blow"' -f $text2, $script:appName, $text1)
 				$toastParams | & osascript
 			}
-			continue
+			break
 		}
-		default { continue }
+		default { break }
 	}
 }
 
@@ -755,14 +776,14 @@ function Update-ProgressToast2 {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $false, Position = 0)][String]$title1 = '',
+		[Parameter(Mandatory = $false, Position = 0)][String]$title1,
 		[Parameter(Mandatory = $true, Position = 1)][String]$rate1,
-		[Parameter(Mandatory = $false, Position = 2)][String]$leftText1 = '',
-		[Parameter(Mandatory = $false, Position = 3)][String]$rightText1 = '',
-		[Parameter(Mandatory = $false, Position = 4)][String]$title2 = '',
+		[Parameter(Mandatory = $false, Position = 2)][String]$leftText1,
+		[Parameter(Mandatory = $false, Position = 3)][String]$rightText1,
+		[Parameter(Mandatory = $false, Position = 4)][String]$title2,
 		[Parameter(Mandatory = $true, Position = 5)][String]$rate2,
-		[Parameter(Mandatory = $false, Position = 6)][String]$leftText2 = '',
-		[Parameter(Mandatory = $false, Position = 7)][String]$rightText2 = '',
+		[Parameter(Mandatory = $false, Position = 6)][String]$leftText2,
+		[Parameter(Mandatory = $false, Position = 7)][String]$rightText2,
 		[Parameter(Mandatory = $true, Position = 8)][String]$tag,
 		[Parameter(Mandatory = $true, Position = 9)][String]$group
 	)
@@ -772,6 +793,7 @@ function Update-ProgressToast2 {
 	if ($script:disableToastNotification -ne $true) {
 		switch ($true) {
 			$IsWindows {
+				$appID = Get-WindowsAppId
 				$toastData = New-Object 'system.collections.generic.dictionary[String,string]'
 				$toastData.Add('progressTitle1', $title1)
 				$toastData.Add('progressValue1', $rate1)
@@ -783,12 +805,12 @@ function Update-ProgressToast2 {
 				$toastData.Add('progressStatus2', $leftText2)
 				$toastProgressData = [Windows.UI.Notifications.NotificationData]::new($toastData)
 				$toastProgressData.SequenceNumber = 2
-				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($script:appID).Update($toastProgressData, $tag , $group)
-				continue
+				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appID).Update($toastProgressData, $tag , $group)
+				break
 			}
-			$IsLinux { continue }
-			$IsMacOS { continue }
-			default { continue }
+			$IsLinux { break }
+			$IsMacOS { break }
+			default { break }
 		}
 	}
 }
@@ -802,12 +824,12 @@ function Show-Progress2Row {
 	[OutputType([System.Void])]
 	Param (
 		[Parameter(Mandatory = $true, Position = 0)][String]$text1,
-		[Parameter(Mandatory = $false, Position = 1)][String]$text2 = '',
-		[Parameter(Mandatory = $false, Position = 2)][String]$detail1 = '',
-		[Parameter(Mandatory = $false, Position = 3)][String]$detail2 = '',
+		[Parameter(Mandatory = $false, Position = 1)][String]$text2,
+		[Parameter(Mandatory = $false, Position = 2)][String]$detail1,
+		[Parameter(Mandatory = $false, Position = 3)][String]$detail2,
 		[Parameter(Mandatory = $true, Position = 4)][String]$tag,
-		[Parameter(Mandatory = $false, Position = 5)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
-		[Parameter(Mandatory = $false, Position = 6)][Boolean]$silent = $false,
+		[Parameter(Mandatory = $false, Position = 5)][ValidateSet('Short', 'Long')][String]$duration,
+		[Parameter(Mandatory = $false, Position = 6)][Boolean]$silent,
 		[Parameter(Mandatory = $true, Position = 7)][String]$group
 	)
 
@@ -837,14 +859,14 @@ function Update-Progress2Row {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $false, Position = 0)][String]$activity1 = '',
-		[Parameter(Mandatory = $false, Position = 1)][String]$processing1 = '',
+		[Parameter(Mandatory = $false, Position = 0)][String]$activity1,
+		[Parameter(Mandatory = $false, Position = 1)][String]$processing1,
 		[Parameter(Mandatory = $true, Position = 2)][String]$rate1,
-		[Parameter(Mandatory = $false, Position = 3)][String]$secRemaining1 = '-1',
-		[Parameter(Mandatory = $false, Position = 4)][String]$activity2 = '',
-		[Parameter(Mandatory = $false, Position = 5)][String]$processing2 = '',
+		[Parameter(Mandatory = $false, Position = 3)][String]$secRemaining1,
+		[Parameter(Mandatory = $false, Position = 4)][String]$activity2,
+		[Parameter(Mandatory = $false, Position = 5)][String]$processing2,
 		[Parameter(Mandatory = $true, Position = 6)][String]$rate2,
-		[Parameter(Mandatory = $false, Position = 7)][String]$secRemaining2 = '-1',
+		[Parameter(Mandatory = $false, Position = 7)][String]$secRemaining2,
 		[Parameter(Mandatory = $true, Position = 8)][String]$tag,
 		[Parameter(Mandatory = $true, Position = 9)][String]$group
 	)
@@ -852,8 +874,8 @@ function Update-Progress2Row {
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
 
 	if ($script:disableToastNotification -ne $true) {
-		$minRemaining1 = if ($secRemaining1 -eq '-1') { '' } else { ('残り時間 {0}分' -f ([Int][Math]::Ceiling($secRemaining1 / 60))) }
-		$minRemaining2 = if ($secRemaining2 -eq '-1') { '' } else { ('残り時間 {0}分' -f ([Int][Math]::Ceiling($secRemaining2 / 60))) }
+		$minRemaining1 = ($secRemaining1 -eq -1 -or $secRemaining1 -eq '' ) ? '' : ('残り時間 {0}分' -f ([Int][Math]::Ceiling($secRemaining1 / 60)))
+		$minRemaining2 = ($secRemaining2 -eq -1 -or $secRemaining2 -eq '' ) ? '' : ('残り時間 {0}分' -f ([Int][Math]::Ceiling($secRemaining2 / 60)))
 
 		Update-ProgressToast2 `
 			-Title1 $processing1 `
