@@ -25,7 +25,7 @@
 #
 ###################################################################################
 
-try { $script:uiMode = [String]$args[0] } catch { $script:uiMode = '' }
+try { $script:guiMode = [String]$args[0] } catch { $script:guiMode = '' }
 
 #━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #環境設定
@@ -65,16 +65,15 @@ Show-ProgressToast `
 	-Silent $false
 
 #半日以上前のログファイル・ロックファイルを削除
-$ffmpegErrorLogDir = Convert-Path (Split-Path -Parent -Path $script:ffpmegErrorLogPath)
 Update-ProgressToast `
-	-Title $ffmpegErrorLogDir `
+	-Title $script:logDir  `
 	-Rate ( 1 / 4 ) `
 	-LeftText '' `
 	-RightText '' `
 	-Tag $script:appName `
 	-Group 'Delete'
 Remove-Files `
-	-BasePath $ffmpegErrorLogDir `
+	-BasePath $script:logDir `
 	-Conditions 'ffmpeg_error_*.log' `
 	-DelPeriod 1
 
@@ -139,7 +138,6 @@ Show-ProgressToast `
 if ($script:forceSingleDownload) {
 	Write-Warning ('❗ - 強制ダウンロードフラグが設定されているためダウンロード対象外の番組の削除処理をスキップします')
 } else {
-	Add-Type -AssemblyName 'System.Globalization'
 	#ダウンロード対象外番組の読み込み
 	$ignoreTitles = @(Read-IgnoreList)
 	$ignoreDirs = [System.Collections.Generic.List[object]]::new()
@@ -148,8 +146,7 @@ if ($script:forceSingleDownload) {
 		$workDirEntities = @(Get-ChildItem -LiteralPath $script:downloadBaseDir)
 		if ($workDirEntities.Count -ne 0) {
 			foreach ($ignoreTitle in $ignoreTitles) {
-				#$ignoreTitle = ('*{0}*' -f $ignoreTitle)
-				$filteredDirs = $workDirEntities.Where({ $_.Name -like $ignoreTitle })
+				$filteredDirs = $workDirEntities.Where({ $_.Name.Normalize([Text.NormalizationForm]::FormC) -like ('*{0}*' -f $ignoreTitle).Normalize([Text.NormalizationForm]::FormC) })
 				foreach ($filteredDir in $filteredDirs) {
 					$ignoreDirs.Add($filteredDir)
 					Update-IgnoreList $ignoreTitle

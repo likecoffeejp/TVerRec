@@ -207,6 +207,7 @@ if (Test-Path (Join-Path $script:scriptRoot 'functions/update_yt-dlp.ps1') -Path
 if (Test-Path (Join-Path $script:scriptRoot 'functions/update_ytdl-patched.ps1') -PathType Leaf)
 { Remove-Item -LiteralPath (Join-Path $script:scriptRoot 'functions/update_ytdl-patched.ps1') -Force }
 
+<<<<<<< HEAD
 #フォルダ体系変更(v2.9.7→v2.9.8)
 if (Test-Path (Join-Path $script:scriptRoot '../list/list.csv') -PathType Leaf)
 { Move-Item -LiteralPath (Join-Path $script:scriptRoot '../list/list.csv') -Destination (Join-Path $script:scriptRoot '../db/list.csv') -Force }
@@ -243,6 +244,34 @@ if (Test-Path (Join-Path $script:scriptRoot '../resources/TVerRecMain.xaml') -Pa
 if (Test-Path (Join-Path $script:scriptRoot '../resources/TVerRecSetting.xaml') -PathType Leaf)
 { Remove-Item -LiteralPath (Join-Path $script:scriptRoot '../resources/TVerRecSetting.xaml') -Force }
 
+=======
+#ディレクトリ体系変更(v2.9.7→v2.9.8)
+Move-IfExist (Join-Path $script:scriptRoot '../list/list.csv') -Destination (Join-Path $script:scriptRoot '../db/list.csv')
+Remove-IfExist (Join-Path $script:scriptRoot '../.wsb')
+Remove-IfExist (Join-Path $script:scriptRoot '../colab')
+Remove-IfExist (Join-Path $script:scriptRoot '../docker')
+Remove-IfExist (Join-Path $script:scriptRoot '../list')
+Remove-IfExist (Join-Path $script:scriptRoot '../img')
+Remove-IfExist (Join-Path $script:scriptRoot '../lib')
+Remove-IfExist (Join-Path $script:scriptRoot '../conf/ignore.sample.conf')
+Remove-IfExist (Join-Path $script:scriptRoot '../conf/keyword.sample.conf')
+Remove-IfExist (Join-Path $script:scriptRoot '../db/history.sample.csv')
+Remove-IfExist (Join-Path $script:scriptRoot '../db/history.lock')
+Remove-IfExist (Join-Path $script:scriptRoot '../db/ignore.lock')
+Remove-IfExist (Join-Path $script:scriptRoot '../db/list.lock')
+Remove-IfExist (Join-Path $script:scriptRoot '../resources/Icon.b64')
+Remove-IfExist (Join-Path $script:scriptRoot '../resources/Logo.b64')
+Remove-IfExist (Join-Path $script:scriptRoot '../resources/TVerRecMain.xaml')
+Remove-IfExist (Join-Path $script:scriptRoot '../resources/TVerRecSetting.xaml')
+>>>>>>> 3831af5f2df229386e4e052e791239d30163297a
+
+#リストファイルのレイアウト変更(v2.9.9→v3.0.0)
+$currentListFile = [pscustomobject](Import-Csv (Join-Path $script:scriptRoot '../db/list.csv'))
+$currentListFile | Add-Member -MemberType NoteProperty -Name 'episodePageURL' -Value ''
+$currentListFile | Add-Member -MemberType NoteProperty -Name 'seriesPageURL' -Value ''
+$currentListFile | Add-Member -MemberType NoteProperty -Name 'descriptionText' -Value ''
+Set-Content -LiteralPath (Join-Path $script:scriptRoot '../db/list.csv') -Value 'episodeID,episodePageURL,episodeNo,episodeName,seriesID,seriesPageURL,seriesName,seasonID,seasonName,media,provider,broadcastDate,endTime,keyword,ignoreWord,descriptionText'
+$currentListFile | Export-Csv -LiteralPath (Join-Path $script:scriptRoot '../db/list.csv') -Encoding UTF8 -Append
 
 #実行権限の付与
 if (!$IsWindows) {

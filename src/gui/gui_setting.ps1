@@ -77,7 +77,7 @@ function Sync-WpfEvents {
 	[Dispatcher]::PushFrame($script:frame)
 }
 
-#フォルダ選択ダイアログ
+#ディレクトリ選択ダイアログ
 function Select-Folder($description, $textBox) {
 	$script:fd.Description = $description
 	$script:fd.RootFolder = [System.Environment+SpecialFolder]::MyComputer
@@ -162,8 +162,8 @@ function Save-UserSetting {
 		catch { Write-Warning ('❗ 自動生成の終了部分を特定できませんでした') }
 	}
 
-	#改行コードをLFで出力
-	$newSetting.ForEach({ "{0}`n" -f $_ }) | Out-File -LiteralPath $script:userSettingFile -Encoding UTF8 -NoNewline
+	#改行コードLFを強制 + NFCで出力
+	$newSetting.ForEach({ "{0}`n" -f $_ }).Normalize([Text.NormalizationForm]::FormC)  | Out-File -LiteralPath $script:userSettingFile -Encoding UTF8 -NoNewline
 }
 
 #endregion 関数定義
@@ -275,6 +275,7 @@ $script:settingAttributes += '$script:ffmpegDecodeOption'
 $script:settingAttributes += '$script:ytdlOption'
 $script:settingAttributes += '$script:ytdlNonTVerFileName'
 $script:settingAttributes += '$script:forceSingleDownload'
+$script:settingAttributes += '$script:extractDescTextToList'
 
 $defaultSetting = @{}
 $currentSetting = @{}

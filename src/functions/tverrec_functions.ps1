@@ -25,6 +25,7 @@
 #
 ###################################################################################
 Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
+Add-Type -AssemblyName 'System.Globalization'
 
 #----------------------------------------------------------------------
 #TVerRec最新化確認
@@ -304,11 +305,11 @@ function Update-IgnoreList {
 		$ignoreComment = @(Get-Content $script:ignoreFileSamplePath -Encoding UTF8)
 		$ignoreTarget = @($ignoreLists.Where({ $_ -eq $ignoreTitle }) | Sort-Object | Get-Unique)
 		$ignoreElse = @($ignoreLists.Where({ $_ -notin $ignoreTitle }))
-		$ignoreListNew += $ignoreComment
-		$ignoreListNew += $ignoreTarget
-		$ignoreListNew += $ignoreElse
-		#改行コードLFを強制
-		$ignoreListNew.ForEach({ "{0}`n" -f $_ }) | Out-File -LiteralPath $script:ignoreFilePath -Encoding UTF8 -NoNewline
+		if ($ignoreComment) { $ignoreListNew += $ignoreComment }
+		if ($ignoreTarget) { $ignoreListNew += $ignoreTarget }
+		if ($ignoreElse) { $ignoreListNew += $ignoreElse }
+		#改行コードLFを強制 + NFCで出力
+		$ignoreListNew.ForEach({ "{0}`n" -f $_ }).Normalize([Text.NormalizationForm]::FormC)  | Out-File -LiteralPath $script:ignoreFilePath -Encoding UTF8 -NoNewline
 		Write-Debug ('ダウンロード対象外リストのソート更新完了')
 	} catch { Write-Error ('❗ ダウンロード対象外リストのソートに失敗しました') ; exit 1 }
 	finally { $null = Unlock-File $script:ignoreLockFilePath }
@@ -447,22 +448,46 @@ function Format-ListRecord {
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
 
-	return [pscustomobject]@{
-		seriesName    = $videoInfo.seriesName
-		seriesID      = $videoInfo.seriesID
-		seasonName    = $videoInfo.seasonName
-		seasonID      = $videoInfo.seasonID
-		episodeNo     = $videoInfo.episodeNum
-		episodeName   = $videoInfo.episodeName
-		episodeID     = $videoInfo.episodeID
-		media         = $videoInfo.mediaName
-		provider      = $videoInfo.providerName
-		broadcastDate = $videoInfo.broadcastDate
-		endTime       = $videoInfo.endTime
-		keyword       = $videoInfo.keyword
-		ignoreWord    = $videoInfo.ignoreWord
+	if ($script:extractDescTextToList) {
+		return [pscustomobject]@{
+			seriesName      = $videoInfo.seriesName
+			seriesID        = $videoInfo.seriesID
+			seriesPageURL   = $videoInfo.seriesPageURL
+			seasonName      = $videoInfo.seasonName
+			seasonID        = $videoInfo.seasonID
+			episodeNo       = $videoInfo.episodeNum
+			episodeName     = $videoInfo.episodeName
+			episodeID       = $videoInfo.episodeID
+			episodePageURL  = $videoInfo.episodePageURL
+			media           = $videoInfo.mediaName
+			provider        = $videoInfo.providerName
+			broadcastDate   = $videoInfo.broadcastDate
+			endTime         = $videoInfo.endTime
+			keyword         = $videoInfo.keyword
+			ignoreWord      = $videoInfo.ignoreWord
+			descriptionText = $videoInfo.descriptionText
+		}
+	} else {
+		return [pscustomobject]@{
+			seriesName     = $videoInfo.seriesName
+			seriesID       = $videoInfo.seriesID
+			seriesPageURL  = $videoInfo.seriesPageURL
+			seasonName     = $videoInfo.seasonName
+			seasonID       = $videoInfo.seasonID
+			episodeNo      = $videoInfo.episodeNum
+			episodeName    = $videoInfo.episodeName
+			episodeID      = $videoInfo.episodeID
+			episodePageURL = $videoInfo.episodePageURL
+			media          = $videoInfo.mediaName
+			provider       = $videoInfo.providerName
+			broadcastDate  = $videoInfo.broadcastDate
+			endTime        = $videoInfo.endTime
+			keyword        = $videoInfo.keyword
+			ignoreWord     = $videoInfo.ignoreWord
+		}
 	}
 }
+
 #----------------------------------------------------------------------
 #「《」と「》」で挟まれた文字を除去
 #----------------------------------------------------------------------
@@ -519,14 +544,14 @@ function Invoke-VideoDownload {
 		# 履歴ファイルに存在しない
 		# 	ファイルが存在する	→検証だけする
 		# 	ファイルが存在しない
-		# 		無視リストに存在する	→無視
-		# 		無視リストに存在しない	→ダウンロード
+		# 		ダウンロード対象外リストに存在する	→無視
+		# 		ダウンロード対象外リストに存在しない	→ダウンロード
 		#ダウンロード履歴ファイルのデータを読み込み
 		$histFileData = @(Read-HistoryFile)
 		$histMatch = @($histFileData.Where({ $_.videoPath -eq $videoInfo.fileRelPath }))
 		if (($histMatch.Count -ne 0)) {
 			#履歴ファイルに存在する	→スキップして次のファイルに
-			Write-Warning ('❗ 同名のファイルがすでに履歴ファイルに存在します。番組IDが変更になった可能性があります。スキップします')
+			Write-Warning ('❗ 同名のファイルがすでに履歴ファイルに存在します。番組IDが変更になった可能性があります。ダウンロードをスキップします')
 			$videoInfo | Add-Member -MemberType NoteProperty -Name 'validated' -Value '1'
 			$videoInfo.fileName = '-- SKIPPED --'
 			$newVideo = Format-HistoryRecord $videoInfo
@@ -539,7 +564,7 @@ function Invoke-VideoDownload {
 			$newVideo = Format-HistoryRecord $videoInfo
 			$skipDownload = $true
 		} else {
-			#履歴ファイルに存在せず、実ファイルも存在せず、無視リストと合致	→無視する
+			#履歴ファイルに存在せず、実ファイルも存在せず、ダウンロード対象外リストと合致	→無視する
 			$ignoreTitles = @(Read-IgnoreList)
 			foreach ($ignoreTitle in $ignoreTitles) {
 				if (($videoInfo.fileName -like $ignoreTitle) `
@@ -556,7 +581,7 @@ function Invoke-VideoDownload {
 					break
 				}
 			}
-			#履歴ファイルに存在せず、実ファイルも存在せず、無視リストとも合致しない	→ダウンロードする
+			#履歴ファイルに存在せず、実ファイルも存在せず、ダウンロード対象外リストとも合致しない	→ダウンロードする
 			if (!$skipDownload) {
 				Write-Output ('💡 ダウンロードするファイルをダウンロード履歴に追加します')
 				$videoInfo | Add-Member -MemberType NoteProperty -Name 'validated' -Value '0'
@@ -570,7 +595,7 @@ function Invoke-VideoDownload {
 		while ((Lock-File $script:histLockFilePath).fileLocked -ne $true) { Write-Warning ('ファイルのロック解除待ち中です') ; Start-Sleep -Seconds 1 }
 		$newVideo | Export-Csv -LiteralPath $script:histFilePath -Encoding UTF8 -Append
 		Write-Debug ('ダウンロード履歴を書き込みました')
-	} catch { Write-Warning ('❗ ダウンロード履歴を更新できませんでした。スキップします') ; continue }
+	} catch { Write-Warning ('❗ ダウンロード履歴を更新できませんでした。処理をスキップします') ; continue }
 	finally { $null = Unlock-File $script:histLockFilePath }
 
 	#スキップ対象やダウンロード対象外は飛ばして次のファイルへ
@@ -603,7 +628,7 @@ function Update-VideoList {
 
 	$ignoreWord = ''
 	$newVideo = $null
-	$ignore = $false ;
+	$ignore = $false
 
 	$episodeID = $episodePage.Replace('https://tver.jp/episodes/', '')
 
@@ -747,8 +772,8 @@ function Get-VideoInfo {
 		broadcastDate   = $broadcastDate
 		endTime         = $endTime
 		versionNum      = $versionNum
-		descriptionText = $descriptionText
 		videoInfoURL    = $tverVideoInfoURL
+		descriptionText = $descriptionText
 	}
 }
 
@@ -875,21 +900,23 @@ function Invoke-Ytdl {
 	if ($IsWindows) {
 		try {
 			Write-Debug ('youtube-dl起動コマンド: {0}{1}' -f $script:ytdlPath, $ytdlArgs)
-			$null = Start-Process `
+			$proc = Start-Process `
 				-FilePath $script:ytdlPath `
 				-ArgumentList $ytdlArgs `
 				-PassThru `
 				-WindowStyle $script:windowShowStyle
+			$null = $proc.Handle
 		} catch { Write-Error ('❗ youtube-dlの起動に失敗しました') ; return }
 	} else {
-		Write-Debug ('youtube-dl起動コマンド: nohup {0}{1}' -f $script:ytdlPath, $ytdlArgs)
+		Write-Debug ('youtube-dl起動コマンド: {0}{1}' -f $script:ytdlPath, $ytdlArgs)
 		try {
-			$null = Start-Process `
-				-FilePath nohup `
-				-ArgumentList ($script:ytdlPath, $ytdlArgs) `
+			$proc = Start-Process `
+				-FilePath $script:ytdlPath `
+				-ArgumentList $ytdlArgs `
 				-PassThru `
 				-RedirectStandardOutput /dev/null `
 				-RedirectStandardError /dev/zero
+			$null = $proc.Handle
 		} catch { Write-Error ('❗ youtube-dlの起動に失敗しました') ; return }
 	}
 }
@@ -936,21 +963,23 @@ function Invoke-NonTverYtdl {
 	if ($IsWindows) {
 		try {
 			Write-Debug ('youtube-dl起動コマンド: {0}{1}' -f $script:ytdlPath, $ytdlArgs)
-			$null = Start-Process `
+			$proc = Start-Process `
 				-FilePath $script:ytdlPath `
 				-ArgumentList $ytdlArgs `
 				-PassThru `
 				-WindowStyle $script:windowShowStyle
+			$null = $proc.Handle
 		} catch { Write-Error ('❗ youtube-dlの起動に失敗しました') ; return }
 	} else {
-		Write-Debug ('youtube-dl起動コマンド: nohup {0}{1}' -f $script:ytdlPath, $ytdlArgs)
+		Write-Debug ('youtube-dl起動コマンド: {0}{1}' -f $script:ytdlPath, $ytdlArgs)
 		try {
-			$null = Start-Process `
-				-FilePath nohup `
-				-ArgumentList ($script:ytdlPath, $ytdlArgs) `
+			$proc = Start-Process `
+				-FilePath $script:ytdlPath `
+				-ArgumentList $ytdlArgs `
 				-PassThru `
 				-RedirectStandardOutput /dev/null `
 				-RedirectStandardError /dev/zero
+			$null = $proc.Handle
 		} catch { Write-Error ('❗ youtube-dlの起動に失敗しました') ; return }
 	}
 }
@@ -1114,19 +1143,22 @@ function Invoke-ValidityCheck {
 			if ($IsWindows) {
 				$proc = Start-Process `
 					-FilePath $script:ffprobePath `
-					-ArgumentList ($ffprobeArgs) `
+					-ArgumentList $ffprobeArgs `
 					-PassThru `
 					-WindowStyle $script:windowShowStyle `
 					-RedirectStandardError $script:ffpmegErrorLogPath `
 					-Wait
+				$null = $proc.Handle # cache proc.Handle. This is required for 7.4.0 bug that does not capture the exit code
+				$proc.WaitForExit();
 			} else {
 				$proc = Start-Process `
 					-FilePath $script:ffprobePath `
-					-ArgumentList ($ffprobeArgs) `
+					-ArgumentList $ffprobeArgs `
 					-PassThru `
 					-RedirectStandardOutput /dev/null `
 					-RedirectStandardError $script:ffpmegErrorLogPath `
 					-Wait
+				$proc.WaitForExit();
 			}
 		} catch { Write-Error ('❗ ffprobeを起動できませんでした') ; return }
 	} else {
@@ -1137,7 +1169,7 @@ function Invoke-ValidityCheck {
 			if ($IsWindows) {
 				$proc = Start-Process `
 					-FilePath $script:ffmpegPath `
-					-ArgumentList ($ffmpegArgs) `
+					-ArgumentList $ffmpegArgs `
 					-PassThru `
 					-WindowStyle $script:windowShowStyle `
 					-RedirectStandardError $script:ffpmegErrorLogPath
@@ -1146,7 +1178,7 @@ function Invoke-ValidityCheck {
 			} else {
 				$proc = Start-Process `
 					-FilePath $script:ffmpegPath `
-					-ArgumentList ($ffmpegArgs) `
+					-ArgumentList $ffmpegArgs `
 					-PassThru `
 					-RedirectStandardOutput /dev/null `
 					-RedirectStandardError $script:ffpmegErrorLogPath
@@ -1214,18 +1246,18 @@ function Get-Setting {
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
 
 	$filePathList = @(
-		(Convert-Path (Join-Path $script:confDir 'system_setting.ps1')),
-		(Convert-Path (Join-Path $script:confDir 'user_setting.ps1'))
+		(Join-Path $script:confDir 'system_setting.ps1'),
+		(Join-Path $script:confDir 'user_setting.ps1')
 	)
 	$configList = @{}
 	foreach ($filePath in $filePathList) {
-		$configs = (Select-String $filePath -Pattern '^(\$.+)=(.+)(\s*)$').ForEach({ $_.line })
-		$excludePattern = '(.*PSStyle.*|.*Base64)'
-		foreach ($config in $configs) {
-			$configParts = $config -split '='
-			$key = $configParts[0].replace('script:', '').replace('$', '').trim()
-			if (!($key -match $excludePattern)) {
-				$configList[$key] = (Get-Variable -Name $key).Value
+		if (Test-Path $filePath) {
+			$configs = (Select-String $filePath -Pattern '^(\$.+)=(.+)(\s*)$').ForEach({ $_.line })
+			$excludePattern = '(.*PSStyle.*|.*Base64)'
+			foreach ($config in $configs) {
+				$configParts = $config -split '='
+				$key = $configParts[0].replace('script:', '').replace('$', '').trim()
+				if (!($key -match $excludePattern)) { $configList[$key] = (Get-Variable -Name $key).Value }
 			}
 		}
 	}
@@ -1262,6 +1294,8 @@ function Invoke-StatisticsCheck {
 		OS           = @{ 'value' = $script:os }
 		Kernel       = @{ 'value' = $script:kernel }
 		Architecture = @{ 'value' = $script:arch }
+		Locale       = @{ 'value' = $script:locale }
+		TimeZone     = @{ 'value' = $script:tz }
 	}
 	foreach ($clientEnv in $script:clientEnvs) {
 		$value = [string]$clientEnv.Value
@@ -1309,13 +1343,10 @@ function Invoke-StatisticsCheck {
 #----------------------------------------------------------------------
 #GUID取得
 #----------------------------------------------------------------------
-$progressPreference = 'SilentlyContinue'
-
 switch ($true) {
 	$IsWindows {
-		$osDetails = Get-CimInstance -Class Win32_OperatingSystem
-		$script:os = $osDetails.Caption
-		$script:kernel = $osDetails.Version
+		$script:os = (Get-CimInstance -Class Win32_OperatingSystem).Caption
+		$script:kernel = (Get-CimInstance -Class Win32_OperatingSystem).Version
 		$script:arch = $Env:PROCESSOR_ARCHITECTURE.ToLower()
 		$script:guid = (Get-CimInstance -Class Win32_ComputerSystemProduct).UUID
 		break
@@ -1331,8 +1362,13 @@ switch ($true) {
 		$script:os = (& sw_vers -productName)
 		$script:kernel = [String][System.Environment]::OSVersion.Version
 		$script:arch = (& uname -m | tr '[:upper:]' '[:lower:]')
+<<<<<<< HEAD
 		$script:guid = if (Test-Path '/etc/machine-id') { (Get-Content /etc/machine-id) } else { ([guid]::NewGuid()).tostring().replace('-', '') }
 		break
+=======
+		$script:guid = (& system_profiler SPHardwareDataType | awk '/UUID/ { print $3; }').replace('-', '')
+		continue
+>>>>>>> 3831af5f2df229386e4e052e791239d30163297a
 	}
 	default {
 		$script:os = [String][System.Environment]::OSVersion
@@ -1346,6 +1382,7 @@ switch ($true) {
 $script:locale = (Get-Culture).Name
 $script:tz = [String][TimeZoneInfo]::Local.BaseUtcOffset
 
+$progressPreference = 'SilentlyContinue'
 $script:clientEnvs = @{}
 try {
 	$GeoIPValues = (Invoke-RestMethod -Uri 'http://ip-api.com/json/?fields=18030841' -TimeoutSec $script:timeoutSec).psobject.properties
@@ -1353,13 +1390,6 @@ try {
 } catch {
 	Write-Debug ('Failed to check Geo IP')
 }
+$progressPreference = 'Continue'
 $script:clientEnvs = $script:clientEnvs.GetEnumerator() | Sort-Object -Property key
 $script:clientSettings = Get-Setting
-
-$progressPreference = 'Continue'
-
-$script:requestHeader = @{
-	'x-tver-platform-type' = 'web'
-	'Origin'               = 'https://tver.jp'
-	'Referer'              = 'https://tver.jp'
-}

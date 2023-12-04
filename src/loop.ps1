@@ -25,7 +25,7 @@
 #
 ###################################################################################
 
-try { $script:uiMode = [String]$args[0] } catch { $script:uiMode = '' }
+try { $script:guiMode = [String]$args[0] } catch { $script:guiMode = '' }
 
 #━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #環境設定
@@ -45,10 +45,10 @@ if ($script:scriptRoot.Contains(' ')) { Write-Error ('❗ TVerRecはスペース
 #----------------------------------------------------------------------
 while ($true) {
 
-	. ('{0}/download_bulk.ps1' -f $script:scriptRoot) $script:uiMode
-	. ('{0}/delete_trash.ps1' -f $script:scriptRoot) $script:uiMode
-	. ('{0}/validate_video.ps1' -f $script:scriptRoot) $script:uiMode
-	. ('{0}/move_video.ps1' -f $script:scriptRoot) $script:uiMode
+	. ('{0}/download_bulk.ps1' -f $script:scriptRoot) $script:guiMode
+	. ('{0}/delete_trash.ps1' -f $script:scriptRoot) $script:guiMode
+	. ('{0}/validate_video.ps1' -f $script:scriptRoot) $script:guiMode
+	. ('{0}/move_video.ps1' -f $script:scriptRoot) $script:guiMode
 	Invoke-GarbageCollection
 	Write-Output ('')
 	Write-Output ('{0}秒待機します。' -f $script:loopCycle)
@@ -58,8 +58,8 @@ while ($true) {
 		$remainingWaitTime -= 100
 		$progressRatio = [Int]($remainingWaitTime / $script:loopCycle * 100 / 2 )
 		Write-Output ('[{0}{1}{2}] 残り{3}秒' -f $('=' * $(50 - $progressRatio)), '>', $('-' * $progressRatio), $remainingWaitTime)
+		Invoke-GarbageCollection
 	} while ($remainingWaitTime -ge 100)
-	Invoke-GarbageCollection
 }
 #----------------------------------------------------------------------
 Invoke-GarbageCollection
