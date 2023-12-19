@@ -173,6 +173,15 @@ $script:addEpisodeNumber = $true
 #　《ドラマ特区》、《新シリーズ放送記念》、《ドラマParavi》、《〇〇出演 「〇〇」スタート記念》などを除去する目的
 $script:removeSpecialNote = $true
 
+#番組ファイルへの字幕データの埋め込み
+#　ダウンロードしたファイルに字幕データを埋め込むかを設定します。
+#　字幕データが提供されていない番組も多くありますのでご注意ください。
+$script:embedSubtitle = $true
+
+#番組ファイルへのメタタグの埋め込み
+#　ダウンロードしたファイルにメタタグを埋め込むかを設定します。
+$script:embedMetatag = $true
+
 #youtube-dlの取得元
 #　youtube-dlに起因する問題(例えばダウンロードできないなど)が起きた際には2種類のyoutube-dlを使い分けることが可能です。
 #　'yt-dlp'を設定するとyt-dlp(https://github.com/yt-dlp/yt-dlp)から取得します。
@@ -209,15 +218,6 @@ $script:disableValidation = $false
 #　エピソードだけの処理でも全番組のダウンロードが可能なようです。
 #　処理時間が長くなりますが、エピソード以外も処理することでダウンロード対象番組が増える可能性があります。
 $script:sitemapParseEpisodeOnly = $true
-
-#番組ファイルへの字幕データの埋め込み
-#　ダウンロードしたファイルに字幕データを埋め込むかを設定します。
-#　字幕データが提供されていない番組も多くありますのでご注意ください。
-$script:embedSubtitle = $true
-
-#番組ファイルへのメタタグの埋め込み
-#　ダウンロードしたファイルにメタタグを埋め込むかを設定します。
-$script:embedMetatag = $true
 
 #youtube-dlとffmpegのウィンドウの表示方法(Windowsのみ) Normal/Maximized/Minimized/Hidden
 #　youtube-dl と ffmpeg のウィンドウをどのように表示するかを設定します。
@@ -323,4 +323,4 @@ $script:iconPath = Convert-Path (Join-Path $script:imgDir 'TVerRec-Icon.png')
 
 #youtube-dlの引数
 $script:ytdlAcceptLang = 'Accept-Language:ja-JP'
-$script:ytdlBaseArgs = '--format "(bv*+ba/b)[protocol!*=dash] / (bv*+ba/b)" --merge-output-format mp4 --force-overwrites --console-title --no-mtime --retries 10 --fragment-retries 10 --abort-on-unavailable-fragment --no-keep-fragments --abort-on-error --no-continue --windows-filenames --embed-thumbnail --embed-chapters --no-cache-dir --verbose'
+$script:ytdlBaseArgs = '--format "(bv*+ba/b)[protocol!*=dash] / (bv*+ba/b)" --format-sort proto --merge-output-format mp4 --force-overwrites --console-title --no-mtime --retries 10 --fragment-retries 10 --abort-on-unavailable-fragment --no-keep-fragments --abort-on-error --no-continue --windows-filenames --embed-thumbnail --embed-chapters --no-cache-dir --verbose'
