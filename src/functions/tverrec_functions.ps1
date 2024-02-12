@@ -2,27 +2,6 @@
 #
 #		TVerRec固有関数スクリプト
 #
-#	Copyright (c) 2022 dongaba
-#
-#	Licensed under the MIT License;
-#	Permission is hereby granted, free of charge, to any person obtaining a copy
-#	of this software and associated documentation files (the "Software"), to deal
-#	in the Software without restriction, including without limitation the rights
-#	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#	copies of the Software, and to permit persons to whom the Software is
-#	furnished to do so, subject to the following conditions:
-#
-#	The above copyright notice and this permission notice shall be included in
-#	all copies or substantial portions of the Software.
-#
-#	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#	THE SOFTWARE.
-#
 ###################################################################################
 Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
 Add-Type -AssemblyName 'System.Globalization'
@@ -49,13 +28,13 @@ function Invoke-TVerRecUpdateCheck {
 	} catch { return }
 
 	#GitHub側最新バージョンの整形
-	# v1.2.3 → 1.2.3
+	#	v1.2.3 → 1.2.3
 	$latestVersion = $appReleases[0].Tag_Name.Trim('v', ' ')
-	# v1.2.3 beta 4 → 1.2.3
+	#	v1.2.3 beta 4 → 1.2.3
 	$latestMajorVersion = $latestVersion.split(' ')[0]
 
 	#ローカル側バージョンの整形
-	# v1.2.3 beta 4 → 1.2.3
+	#	v1.2.3 beta 4 → 1.2.3
 	$appMajorVersion = $script:appVersion.split(' ')[0]
 
 	#バージョン判定
@@ -109,8 +88,8 @@ function Invoke-ToolUpdateCheck {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][string]$scriptName,
-		[Parameter(Mandatory = $true, Position = 1)][string]$targetName
+		[Parameter(Mandatory = $true)][string]$scriptName,
+		[Parameter(Mandatory = $true)][string]$targetName
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -125,12 +104,12 @@ function Invoke-ToolUpdateCheck {
 #----------------------------------------------------------------------
 #ファイル・ディレクトリの存在チェック、なければサンプルファイルコピー
 #----------------------------------------------------------------------
-function Invoke-PathExistenceCheck {
+function Invoke-TverrecPathCheck {
 	Param(
-		[Parameter(Mandatory = $true, Position = 0)][string]$path,
-		[Parameter(Mandatory = $true, Position = 1)][string]$errorMessage,
-		[Parameter(Mandatory = $false, Position = 2)][switch]$isFile,
-		[Parameter(Mandatory = $false, Position = 3)][string]$sampleFilePath
+		[Parameter(Mandatory = $true )][string]$path,
+		[Parameter(Mandatory = $true )][string]$errorMessage,
+		[Parameter(Mandatory = $false)][switch]$isFile,
+		[Parameter(Mandatory = $false)][string]$sampleFilePath
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -139,8 +118,7 @@ function Invoke-PathExistenceCheck {
 
 	if (!(Test-Path $path -PathType $pathType)) {
 		if (!($sampleFilePath -and (Test-Path $sampleFilePath -PathType 'Leaf'))) {
-			Write-Error ("❗ $errorMessage 終了します。")
-			exit 1
+			Write-Error ('❗ {0}が存在しません。終了します。' -f $errorMessage) ; exit 1
 		}
 		Copy-Item -LiteralPath $sampleFilePath -Destination $path -Force
 	}
@@ -155,28 +133,27 @@ function Invoke-RequiredFileCheck {
 
 	Write-Debug ($MyInvocation.MyCommand.Name)
 
-	Invoke-PathExistenceCheck -path $script:downloadBaseDir -errorMessage '番組ダウンロード先ディレクトリが存在しません。'
-	Invoke-PathExistenceCheck -path $script:downloadWorkDir -errorMessage 'ダウンロード作業ディレクトリが存在しません。'
-
+	if ($script:downloadBaseDir -eq '') { Write-Error ('❗ 番組ダウンロード先ディレクトリが設定されていません。終了します。') ; exit 1 }
+	else { Invoke-TverrecPathCheck -Path $script:downloadBaseDir -errorMessage '番組ダウンロード先ディレクトリ' }
+	if ($script:downloadWorkDir -eq '') { Write-Error ('❗ ダウンロード作業ディレクトリが設定されていません。終了します。') ; exit 1 }
+	else { Invoke-TverrecPathCheck -Path $script:downloadWorkDir -errorMessage 'ダウンロード作業ディレクトリ' }
 	if ($script:saveBaseDir -ne '') {
 		$script:saveBaseDirArray = $script:saveBaseDir.split(';').Trim()
 		foreach ($saveDir in $script:saveBaseDirArray) {
-			Invoke-PathExistenceCheck -path $saveDir.Trim() -errorMessage '番組移動先ディレクトリが存在しません。'
+			Invoke-TverrecPathCheck -Path $saveDir.Trim() -errorMessage '番組移動先ディレクトリ'
 		}
 	}
 
-	Invoke-PathExistenceCheck -path $script:ytdlPath -isFile -errorMessage 'youtube-dlが存在しません。'
-	Invoke-PathExistenceCheck -path $script:ffmpegPath -isFile -errorMessage 'ffmpegが存在しません。'
-
+	Invoke-TverrecPathCheck -Path $script:ytdlPath -errorMessage 'youtube-dl' -isFile
+	Invoke-TverrecPathCheck -Path $script:ffmpegPath -errorMessage 'ffmpeg' -isFile
 	if ($script:simplifiedValidation) {
-		Invoke-PathExistenceCheck -path $script:ffprobePath -isFile -errorMessage 'ffprobeが存在しません。'
+		Invoke-TverrecPathCheck -Path $script:ffprobePath -errorMessage 'ffprobe' -isFile
 	}
 
-	#ファイルが存在しない場合はサンプルファイルをコピー
-	Invoke-PathExistenceCheck -path $script:keywordFilePath -isFile -errorMessage 'ダウンロード対象キーワードファイルが存在しません。' -sampleFilePath $script:keywordFileSamplePath
-	Invoke-PathExistenceCheck -path $script:ignoreFilePath -isFile -errorMessage 'ダウンロード対象外番組ファイルが存在しません。' -sampleFilePath $script:ignoreFileSamplePath
-	Invoke-PathExistenceCheck -path $script:histFilePath -isFile -errorMessage 'ダウンロード履歴ファイルが存在しません。' -sampleFilePath $script:histFileSamplePath
-	Invoke-PathExistenceCheck -path $script:listFilePath -isFile -errorMessage 'ダウンロードリストファイルが存在しません。' -sampleFilePath $script:listFileSamplePath
+	Invoke-TverrecPathCheck -Path $script:keywordFilePath -errorMessage 'ダウンロード対象キーワードファイル' -isFile -sampleFilePath $script:keywordFileSamplePath
+	Invoke-TverrecPathCheck -Path $script:ignoreFilePath -errorMessage 'ダウンロード対象外番組ファイル' -isFile -sampleFilePath $script:ignoreFileSamplePath
+	Invoke-TverrecPathCheck -Path $script:histFilePath -errorMessage 'ダウンロード履歴ファイル' -isFile -sampleFilePath $script:histFileSamplePath
+	Invoke-TverrecPathCheck -Path $script:listFilePath -errorMessage 'ダウンロードリストファイル' -isFile -sampleFilePath $script:listFileSamplePath
 }
 
 
@@ -292,7 +269,7 @@ function Read-IgnoreList {
 function Update-IgnoreList {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$ignoreTitle
+		[Parameter(Mandatory = $true)][String]$ignoreTitle
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -323,7 +300,7 @@ function Update-IgnoreList {
 function Invoke-HistoryMatchCheck {
 	[OutputType([String[]])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][Alias('links')][String[]]$resultLinks
+		[Parameter(Mandatory = $true)][Alias('links')][String[]]$resultLinks
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -346,7 +323,7 @@ function Invoke-HistoryMatchCheck {
 function Invoke-HistoryAndListfileMatchCheck {
 	[OutputType([String[]])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][Alias('links')][String[]]$resultLinks
+		[Parameter(Mandatory = $true)][Alias('links')][String[]]$resultLinks
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -418,7 +395,7 @@ function Wait-YtdlProcess {
 #----------------------------------------------------------------------
 function Format-HistoryRecord {
 	Param(
-		[Parameter(Mandatory = $true, Position = 0)][pscustomobject]$videoInfo
+		[Parameter(Mandatory = $true)][pscustomobject]$videoInfo
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -445,7 +422,7 @@ function Format-HistoryRecord {
 #----------------------------------------------------------------------
 function Format-ListRecord {
 	Param(
-		[Parameter(Mandatory = $true, Position = 0)][pscustomobject]$videoInfo
+		[Parameter(Mandatory = $true)][pscustomobject]$videoInfo
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -507,9 +484,9 @@ Function Remove-SpecialNote {
 function Invoke-VideoDownload {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$keyword,
-		[Parameter(Mandatory = $true, Position = 1)][String]$episodePage,
-		[Parameter(Mandatory = $false, Position = 2)][Boolean]$force = $false
+		[Parameter(Mandatory = $true )][String]$keyword,
+		[Parameter(Mandatory = $true )][String]$episodePage,
+		[Parameter(Mandatory = $false)][Boolean]$force = $false
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -539,15 +516,15 @@ function Invoke-VideoDownload {
 	} else {
 		#ここまで来ているということはEpisodeIDでは履歴とマッチしなかったということ
 		#考えられる原因は履歴ファイルがクリアされてしまっていること、または、EpisodeIDが変更になったこと
-		# 履歴ファイルに存在する	→番組IDが変更になったあるいは、番組名の重複
-		# 	検証済	→元々の番組IDとしては問題ないのでSKIP
-		# 	検証中	→元々の番組IDとしてはそのうち検証されるのでSKIP
-		# 	未検証	→元々の番組IDとしては次回検証されるのでSKIP
-		# 履歴ファイルに存在しない
-		# 	ファイルが存在する	→検証だけする
-		# 	ファイルが存在しない
-		# 		ダウンロード対象外リストに存在する	→無視
-		# 		ダウンロード対象外リストに存在しない	→ダウンロード
+		#	履歴ファイルに存在する	→番組IDが変更になったあるいは、番組名の重複
+		#		検証済	→元々の番組IDとしては問題ないのでSKIP
+		#		検証中	→元々の番組IDとしてはそのうち検証されるのでSKIP
+		#		未検証	→元々の番組IDとしては次回検証されるのでSKIP
+		#	履歴ファイルに存在しない
+		#		ファイルが存在する	→検証だけする
+		#		ファイルが存在しない
+		#			ダウンロード対象外リストに存在する	→無視
+		#			ダウンロード対象外リストに存在しない	→ダウンロード
 		#ダウンロード履歴ファイルのデータを読み込み
 		$histFileData = @(Read-HistoryFile)
 		$histMatch = @($histFileData.Where({ $_.videoPath -eq $videoInfo.fileRelPath }))
@@ -620,8 +597,8 @@ function Invoke-VideoDownload {
 function Update-VideoList {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$keyword,
-		[Parameter(Mandatory = $true, Position = 1)][String]$episodePage
+		[Parameter(Mandatory = $true)][String]$keyword,
+		[Parameter(Mandatory = $true)][String]$episodePage
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -681,7 +658,7 @@ function Update-VideoList {
 function Get-VideoInfo {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$episodeID
+		[Parameter(Mandatory = $true)][String]$episodeID
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -749,7 +726,7 @@ function Get-VideoInfo {
 	if ($videoSeries -cmatch [Regex]::Escape($videoSeason)) { $videoSeason = '' }
 
 	#エピソード番号を極力修正
-	if (($videoEpisodeNum -eq 1) -and ($episodeName -imatch '([#|第|Episode|ep|Take|Vol|Part|Case|Stage|Mystery|Ope|Story|Trap|Letter|Act]+\.?)(\d+)(.*)')) {
+	if (($videoEpisodeNum -eq 1) -and ($episodeName -imatch '([#|第|Episode|ep|Take|Vol|Part|Chapter|Case|Stage|Mystery|Ope|Story|Trap|Letter|Act]+\.?\s?)(\d+)(.*)')) {
 		$videoEpisodeNum = $matches[2]
 	}
 
@@ -788,7 +765,7 @@ function Get-VideoInfo {
 function Format-VideoFileInfo {
 	[OutputType([pscustomobject])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][pscustomobject]$videoInfo
+		[Parameter(Mandatory = $true)][pscustomobject]$videoInfo
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -838,7 +815,7 @@ function Format-VideoFileInfo {
 function Show-VideoInfo {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][pscustomobject]$videoInfo
+		[Parameter(Mandatory = $true)][pscustomobject]$videoInfo
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -855,7 +832,7 @@ function Show-VideoInfo {
 function Show-VideoDebugInfo {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][pscustomobject]$videoInfo
+		[Parameter(Mandatory = $true)][pscustomobject]$videoInfo
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -869,13 +846,16 @@ function Show-VideoDebugInfo {
 function Invoke-Ytdl {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][pscustomobject]$videoInfo
+		[Parameter(Mandatory = $true)][pscustomobject]$videoInfo
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
 
 	Invoke-StatisticsCheck -Operation 'download'
-
+	if ($IsWindows) {
+		if ($script:downloadWorkDir.Substring($script:downloadWorkDir.Length - 1, 1) -eq ':') { $script:downloadWorkDir += '\\' }
+		if ($script:downloadBaseDir.Substring($script:downloadBaseDir.Length - 1, 1) -eq ':') { $script:downloadBaseDir += '\\' }
+	}
 	$tmpDir = ('temp:{0}' -f $script:downloadWorkDir)
 	$saveDir = ('home:{0}' -f $videoInfo.fileDir)
 	$subttlDir = ('subtitle:{0}' -f $script:downloadWorkDir)
@@ -932,15 +912,18 @@ function Invoke-Ytdl {
 function Invoke-NonTverYtdl {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][Alias('URL')]	[String]$videoPageURL
+		[Parameter(Mandatory = $true)][Alias('URL')]	[String]$videoPageURL
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
 
 	Invoke-StatisticsCheck -Operation 'nontver'
-
+	if ($IsWindows) {
+		if ($script:downloadWorkDir.Substring($script:downloadWorkDir.Length - 1, 1) -eq ':') { $script:downloadWorkDir += '\\' }
+		if ($script:downloadBaseDir.Substring($script:downloadBaseDir.Length - 1, 1) -eq ':') { $script:downloadBaseDir += '\\' }
+	}
 	$tmpDir = ('temp:{0}' -f $script:downloadWorkDir)
-	$saveDir = ('home:{0}' -f $script:downloadBaseDir)
+	$baseDir = ('home:{0}' -f $script:downloadBaseDir)
 	$subttlDir = ('subtitle:{0}' -f $script:downloadWorkDir)
 	$thumbDir = ('thumbnail:{0}' -f $script:downloadWorkDir)
 	$chaptDir = ('chapter:{0}' -f $script:downloadWorkDir)
@@ -953,7 +936,7 @@ function Invoke-NonTverYtdl {
 	}
 	if ($script:embedSubtitle) { $ytdlArgs += (' {0}' -f '--sub-langs all --convert-subs srt --embed-subs') }
 	if ($script:embedMetatag) { $ytdlArgs += (' {0}' -f '--embed-metadata') }
-	$ytdlArgs += (' {0} "{1}"' -f '--paths', $saveDir)
+	$ytdlArgs += (' {0} "{1}"' -f '--paths', $baseDir)
 	$ytdlArgs += (' {0} "{1}"' -f '--paths', $tmpDir)
 	$ytdlArgs += (' {0} "{1}"' -f '--paths', $subttlDir)
 	$ytdlArgs += (' {0} "{1}"' -f '--paths', $thumbDir)
@@ -1066,7 +1049,7 @@ function Optimize-HistoryFile {
 function Limit-HistoryFile {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][Int32]$retentionPeriod
+		[Parameter(Mandatory = $true)][Int32]$retentionPeriod
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -1107,8 +1090,8 @@ function Repair-HistoryFile {
 function Invoke-ValidityCheck {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$path,
-		[Parameter(Mandatory = $false, Position = 1)][String]$decodeOption = ''
+		[Parameter(Mandatory = $true)][String]$path,
+		[Parameter(Mandatory = $false)][String]$decodeOption = ''
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -1153,7 +1136,7 @@ function Invoke-ValidityCheck {
 					-WindowStyle $script:windowShowStyle `
 					-RedirectStandardError $script:ffpmegErrorLogPath `
 					-Wait
-				$null = $proc.Handle # cache proc.Handle. This is required for 7.4.0 bug that does not capture the exit code
+				$null = $proc.Handle #proc.Handleをキャッシュ。PS7.4.0の終了コードを捕捉しないバグのために必要
 				$proc.WaitForExit();
 			} else {
 				$proc = Start-Process `
@@ -1178,7 +1161,7 @@ function Invoke-ValidityCheck {
 					-PassThru `
 					-WindowStyle $script:windowShowStyle `
 					-RedirectStandardError $script:ffpmegErrorLogPath
-				$null = $proc.Handle # cache proc.Handle. This is required for 7.4.0 bug that does not capture the exit code
+				$null = $proc.Handle #proc.Handleをキャッシュ。PS7.4.0の終了コードを捕捉しないバグのために必要
 				$proc.WaitForExit();
 			} else {
 				$proc = Start-Process `
@@ -1275,9 +1258,9 @@ function Get-Setting {
 function Invoke-StatisticsCheck {
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$operation,
-		[Parameter(Mandatory = $false, Position = 1)][String]$tverType = 'none',
-		[Parameter(Mandatory = $false, Position = 2)][String]$tverID = 'none'
+		[Parameter(Mandatory = $true )][String]$operation,
+		[Parameter(Mandatory = $false)][String]$tverType = 'none',
+		[Parameter(Mandatory = $false)][String]$tverID = 'none'
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)

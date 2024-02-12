@@ -2,27 +2,6 @@
 #
 #		不要ファイル削除処理スクリプト
 #
-#	Copyright (c) 2022 dongaba
-#
-#	Licensed under the MIT License;
-#	Permission is hereby granted, free of charge, to any person obtaining a copy
-#	of this software and associated documentation files (the "Software"), to deal
-#	in the Software without restriction, including without limitation the rights
-#	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#	copies of the Software, and to permit persons to whom the Software is
-#	furnished to do so, subject to the following conditions:
-#
-#	The above copyright notice and this permission notice shall be included in
-#	all copies or substantial portions of the Software.
-#
-#	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#	THE SOFTWARE.
-#
 ###################################################################################
 
 try { $script:guiMode = [String]$args[0] } catch { $script:guiMode = '' }
@@ -34,8 +13,8 @@ Set-StrictMode -Version Latest
 #----------------------------------------------------------------------
 #初期化
 try {
-	if ($script:myInvocation.MyCommand.CommandType -ne 'ExternalScript') { $script:scriptRoot = Convert-Path . }
-	else { $script:scriptRoot = Split-Path -Parent -Path $script:myInvocation.MyCommand.Definition }
+	if ($myInvocation.MyCommand.CommandType -ne 'ExternalScript') { $script:scriptRoot = Convert-Path . }
+	else { $script:scriptRoot = Split-Path -Parent -Path $myInvocation.MyCommand.Definition }
 	Set-Location $script:scriptRoot
 } catch { Write-Error ('❗ カレントディレクトリの設定に失敗しました') ; exit 1 }
 if ($script:scriptRoot.Contains(' ')) { Write-Error ('❗ TVerRecはスペースを含むディレクトリに配置できません') ; exit 1 }
@@ -46,8 +25,6 @@ try {
 
 #━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #メイン処理
-
-#設定で指定したファイル・ディレクトリの存在チェック
 Invoke-RequiredFileCheck
 
 #======================================================================
@@ -55,64 +32,60 @@ Invoke-RequiredFileCheck
 Write-Output ('')
 Write-Output ('----------------------------------------------------------------------')
 Write-Output ('処理が中断した際にできたゴミファイルを削除します')
-Show-ProgressToast `
-	-Text1 '不要ファイル削除中' `
-	-Text2 '　処理1/3 - ダウンロード中断時のゴミファイルを削除' `
-	-WorkDetail '' `
-	-Tag $script:appName `
-	-Group 'Delete' `
-	-Duration 'long' `
-	-Silent $false
+
+$toastShowParams = @{
+	Text1      = '不要ファイル削除中'
+	Text2      = '　処理1/3 - ダウンロード中断時のゴミファイルを削除'
+	WorkDetail = ''
+	Tag        = $script:appName
+	Silent     = $false
+	Group      = 'Delete'
+}
+Show-ProgressToast @toastShowParams
 
 #半日以上前のログファイル・ロックファイルを削除
-Update-ProgressToast `
-	-Title $script:logDir  `
-	-Rate ( 1 / 4 ) `
-	-LeftText '' `
-	-RightText '' `
-	-Tag $script:appName `
-	-Group 'Delete'
+$toastUpdateParams = @{
+	Title     = $script:logDir
+	Rate      = [Float]( 1 / 4 )
+	LeftText  = ''
+	RightText = ''
+	Tag       = $script:appName
+	Group     = 'Delete'
+}
+Update-ProgressToast @toastUpdateParams
+
 Remove-Files `
 	-BasePath $script:logDir `
 	-Conditions 'ffmpeg_error_*.log' `
 	-DelPeriod 1
 
 #作業ディレクトリ
-Update-ProgressToast `
-	-Title $script:downloadWorkDir `
-	-Rate ( 2 / 4 ) `
-	-LeftText '' `
-	-RightText '' `
-	-Tag $script:appName `
-	-Group 'Delete'
+$toastUpdateParams.Title = $script:downloadWorkDir
+$toastUpdateParams.Rate = [Float]( 2 / 4 )
+Update-ProgressToast @toastUpdateParams
+
 Remove-Files `
 	-BasePath $script:downloadWorkDir `
-	-Conditions '*.ytdl, *.jpg, *.vtt, *.srt, *.temp.mp4, *.part, *.mp4.part-Frag*, *.m4a, *.m4a.part-Frag*, *.live_chat.json, *.mp4' `
+	-Conditions '*.ytdl, *.jpg, *.webp, *.vtt, *.srt, *.part, *.m4a.part-Frag*, *.m4a, *.live_chat.json, *.mp4.part-Frag*, *.temp.mp4, *.mp4' `
 	-DelPeriod 0
 
 #ダウンロード先
-Update-ProgressToast `
-	-Title $script:downloadBaseDir `
-	-Rate ( 3 / 4 ) `
-	-LeftText '' `
-	-RightText '' `
-	-Tag $script:appName `
-	-Group 'Delete'
+$toastUpdateParams.Title = $script:downloadBaseDir
+$toastUpdateParams.Rate = [Float]( 3 / 4 )
+Update-ProgressToast @toastUpdateParams
+
 Remove-Files `
 	-BasePath $script:downloadBaseDir `
-	-Conditions '*.ytdl, *.jpg, *.vtt, *.srt, *.temp.mp4, *.part, *.mp4.part-Frag*, *.m4a, *.m4a.part-Frag*, *.live_chat.json' `
+	-Conditions '*.ytdl, *.jpg, *.webp, *.vtt, *.srt, *.part, *.m4a.part-Frag*, *.m4a, *.live_chat.json, *.mp4.part-Frag*, *.temp.mp4' `
 	-DelPeriod 0
 
 #移動先
 if ($script:saveBaseDir -ne '') {
 	foreach ($saveDir in $script:saveBaseDirArray) {
-		Update-ProgressToast `
-			-Title $saveDir `
-			-Rate ( 4 / 4 ) `
-			-LeftText '' `
-			-RightText '' `
-			-Tag $script:appName `
-			-Group 'Delete'
+		$toastUpdateParams.Title = $saveDir
+		$toastUpdateParams.Rate = [Float]( 4 / 4 )
+		Update-ProgressToast @toastUpdateParams
+
 		Remove-Files `
 			-BasePath $saveDir `
 			-Conditions '*.ytdl, *.jpg, *.vtt, *.srt, *.temp.mp4, *.part, *.mp4.part-Frag*, *.m4a, *.m4a.part-Frag*, *.live_chat.json' `
@@ -125,33 +98,30 @@ if ($script:saveBaseDir -ne '') {
 Write-Output ('')
 Write-Output ('----------------------------------------------------------------------')
 Write-Output ('ダウンロード対象外の番組を削除します')
-Show-ProgressToast `
-	-Text1 '不要ファイル削除中' `
-	-Text2 '　処理2/3 - ダウンロード対象外の番組を削除' `
-	-WorkDetail '' `
-	-Tag $script:appName `
-	-Group 'Delete' `
-	-Duration 'long' `
-	-Silent $false
+
+$toastShowParams.Text2 = '　処理2/3 - ダウンロード対象外の番組を削除'
+Show-ProgressToast @toastShowParams
 
 #個別ダウンロードが強制モードの場合にはスキップ
 if ($script:forceSingleDownload) {
 	Write-Warning ('❗ - 強制ダウンロードフラグが設定されているためダウンロード対象外の番組の削除処理をスキップします')
 } else {
-	#ダウンロード対象外番組の読み込み
+	#ダウンロード先にディレクトリがない場合はスキップ
+	$workDirEntities = @(Get-ChildItem -LiteralPath $script:downloadBaseDir)
+	if ($workDirEntities.Count -eq 0) { return }
+
+	#ダウンロード対象外番組が登録されていない場合はスキップ
 	$ignoreTitles = @(Read-IgnoreList)
 	$ignoreDirs = [System.Collections.Generic.List[object]]::new()
-	#ダウンロード対象外番組が登録されていない場合はスキップ
-	if ($ignoreTitles.Count -ne 0 ) {
-		$workDirEntities = @(Get-ChildItem -LiteralPath $script:downloadBaseDir)
-		if ($workDirEntities.Count -ne 0) {
-			foreach ($ignoreTitle in $ignoreTitles) {
-				$filteredDirs = $workDirEntities.Where({ $_.Name.Normalize([Text.NormalizationForm]::FormC) -like ('*{0}*' -f $ignoreTitle).Normalize([Text.NormalizationForm]::FormC) })
-				foreach ($filteredDir in $filteredDirs) {
-					$ignoreDirs.Add($filteredDir)
-					Update-IgnoreList $ignoreTitle
-				}
-			}
+	if ($ignoreTitles.Count -eq 0) { return }
+
+	#削除対象の特定
+	$ignoreTitles | ForEach-Object {
+		$ignoreTitle = $_.Normalize([Text.NormalizationForm]::FormC)
+		$filteredDirs = $workDirEntities.Where({ $_.Name.Normalize([Text.NormalizationForm]::FormC) -like "*${ignoreTitle}*" })
+		$filteredDirs | ForEach-Object {
+			$ignoreDirs.Add($_)
+			Update-IgnoreList $ignoreTitle
 		}
 	}
 
@@ -180,19 +150,19 @@ if ($script:forceSingleDownload) {
 				$secRemaining = -1
 				if ($ignoreNum -ne 1) {
 					$secRemaining = [Int][Math]::Ceiling(($secElapsed.TotalSeconds / $ignoreNum) * ($ignoreTotal - $ignoreNum))
-					$minRemaining = ('{0}分' -f ([Int][Math]::Ceiling($secRemaining / 60)))
+					$minRemaining = ('残り時間 {0}分' -f ([Int][Math]::Ceiling($secRemaining / 60)))
 					$progressRate = [Float]($ignoreNum / $ignoreTotal)
 				} else {
 					$minRemaining = ''
 					$progressRate = 0
 				}
-				Update-ProgressToast `
-					-Title $ignoreDir.Name `
-					-Rate $progressRate `
-					-LeftText ('{0}/{1}' -f $ignoreNum, $ignoreTotal) `
-					-RightText ('残り時間 {0}' -f $minRemaining) `
-					-Tag $script:appName `
-					-Group 'Delete'
+
+				$toastUpdateParams.Title = $ignoreDir.Name
+				$toastUpdateParams.Rate = $progressRate
+				$toastUpdateParams.LeftText = ('{0}/{1}' -f $ignoreNum, $ignoreTotal)
+				$toastUpdateParams.RightText = $minRemaining
+				Update-ProgressToast @toastUpdateParams
+
 				Write-Output ('　{0}/{1} - {2}' -f $ignoreNum, $ignoreTotal, $ignoreDir.Name)
 				try { Remove-Item -LiteralPath $ignoreDir -Recurse -Force }
 				catch { Write-Warning ('❗ 削除できないファイルがありました') }
@@ -208,14 +178,9 @@ if ($script:forceSingleDownload) {
 Write-Output ('')
 Write-Output ('----------------------------------------------------------------------')
 Write-Output ('空ディレクトリを削除します')
-Show-ProgressToast `
-	-Text1 '不要ファイル削除中' `
-	-Text2 '　処理3/3 - 空ディレクトリを削除' `
-	-WorkDetail '' `
-	-Tag $script:appName `
-	-Group 'Delete' `
-	-Duration 'long' `
-	-Silent $false
+
+$toastShowParams.Text2 = '　処理3/3 - 空ディレクトリを削除'
+Show-ProgressToast @toastShowParams
 
 $emptyDirs = @()
 $emptyDirs = @((Get-ChildItem -LiteralPath $script:downloadBaseDir -Recurse).Where({ $_.PSIsContainer })).Where({ ($_.GetFiles().Count -eq 0) -and ($_.GetDirectories().Count -eq 0) })
@@ -247,19 +212,19 @@ if ($emptyDirTotal -ne 0) {
 			$secRemaining = -1
 			if ($emptyDirNum -ne 1) {
 				$secRemaining = [Int][Math]::Ceiling(($secElapsed.TotalSeconds / $emptyDirNum) * ($emptyDirTotal - $emptyDirNum))
-				$minRemaining = ('{0}分' -f ([Int][Math]::Ceiling($secRemaining / 60)))
+				$minRemaining = ('残り時間 {0}分' -f ([Int][Math]::Ceiling($secRemaining / 60)))
 				$progressRate = [Float]($emptyDirNum / $emptyDirTotal)
 			} else {
 				$minRemaining = ''
 				$progressRate = 0
 			}
-			Update-ProgressToast `
-				-Title $subDir `
-				-Rate $progressRate `
-				-LeftText ('{0}/{1}' -f $emptyDirNum, $emptyDirTotal) `
-				-RightText ('残り時間 {0}' -f $minRemaining) `
-				-Tag $script:appName `
-				-Group 'Move'
+
+			$toastUpdateParams.Title = $subDir
+			$toastUpdateParams.Rate = $progressRate
+			$toastUpdateParams.LeftText = ('{0}/{1}' -f $emptyDirNum, $emptyDirTotal)
+			$toastUpdateParams.RightText = $minRemaining
+			Update-ProgressToast @toastUpdateParams
+
 			Write-Output ('　{0}/{1} - {2}' -f $emptyDirNum, $emptyDirTotal, $subDir)
 			try { Remove-Item -LiteralPath $subDir -Recurse -Force -ErrorAction SilentlyContinue
 			} catch { Write-Warning ('❗ - 空ディレクトリの削除に失敗しました: {0}' -f $subDir) }
@@ -268,13 +233,11 @@ if ($emptyDirTotal -ne 0) {
 }
 #----------------------------------------------------------------------
 
-Update-ProgressToast `
-	-Title '不要ファイル削除' `
-	-Rate 1 `
-	-LeftText '' `
-	-RightText '完了' `
-	-Tag $script:appName `
-	-Group 'Delete'
+$toastUpdateParams.Title = '不要ファイル削除'
+$toastUpdateParams.Rate = 1
+$toastUpdateParams.LeftText = ''
+$toastUpdateParams.RightText = '完了'
+Update-ProgressToast @toastUpdateParams
 
 Invoke-GarbageCollection
 

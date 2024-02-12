@@ -2,27 +2,6 @@
 #
 #		共通関数スクリプト
 #
-#	Copyright (c) 2022 dongaba
-#
-#	Licensed under the MIT License;
-#	Permission is hereby granted, free of charge, to any person obtaining a copy
-#	of this software and associated documentation files (the "Software"), to deal
-#	in the Software without restriction, including without limitation the rights
-#	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#	copies of the Software, and to permit persons to whom the Software is
-#	furnished to do so, subject to the following conditions:
-#
-#	The above copyright notice and this permission notice shall be included in
-#	all copies or substantial portions of the Software.
-#
-#	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#	THE SOFTWARE.
-#
 ###################################################################################
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
@@ -69,7 +48,7 @@ function ConvertFrom-UnixTime {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	param (
-		[Parameter(Mandatory = $true, Position = 0)][int64]$UnixTime
+		[Parameter(Mandatory = $true)][int64]$UnixTime
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -85,7 +64,7 @@ function ConvertFrom-UnixTime {
 function ConvertTo-UnixTime {
 	[CmdletBinding()]
 	Param(
-		[Parameter(Mandatory = $true, Position = 0)][DateTime]$InputDate
+		[Parameter(Mandatory = $true)][DateTime]$InputDate
 	)
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
 
@@ -105,7 +84,7 @@ function Get-FileNameWithoutInvalidChars {
 	[CmdletBinding()]
 	[OutputType([String])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$Name
+		[Parameter(Mandatory = $true)][String]$Name
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -309,9 +288,9 @@ function Remove-Files {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[parameter(Mandatory = $true, Position = 0)][System.IO.FileInfo]$basePath,
-		[Parameter(Mandatory = $true, Position = 0)][Object]$conditions,
-		[Parameter(Mandatory = $true, Position = 0)][int32]$delPeriod
+		[parameter(Mandatory = $true)][System.IO.FileInfo]$basePath,
+		[Parameter(Mandatory = $true)][Object]$conditions,
+		[Parameter(Mandatory = $true)][int32]$delPeriod
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -345,8 +324,8 @@ function Expand-Zip {
 	[CmdletBinding()]
 	[OutputType([void])]
 	Param(
-		[Parameter(Mandatory = $true, Position = 0)][string]$path,
-		[Parameter(Mandatory = $true, Position = 1)][string]$destination
+		[Parameter(Mandatory = $true)][string]$path,
+		[Parameter(Mandatory = $true)][string]$destination
 	)
 
 	if (Test-Path -Path $path) {
@@ -367,24 +346,23 @@ function Lock-File {
 	[CmdletBinding()]
 	[OutputType([PSCustomObject])]
 	Param (
-		[parameter(Mandatory = $true, Position = 0)][System.IO.FileInfo]$path
+		[parameter(Mandatory = $true)][System.IO.FileInfo]$path
 	)
 
 	Write-Debug ('{0} - {1}' -f $MyInvocation.MyCommand.Name, $path)
 
 	$fileLocked = $false
 	try {
-		# attempt to open file and detect file lock
+		#ファイルを開こうとしファイルロックを検出
 		$script:fileInfo = New-Object System.IO.FileInfo $path
 		$script:fileStream = $script:fileInfo.Open([System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
 		$fileLocked = $true
-	} catch { $fileLocked = $false
-	} finally {
-		# return result
-		[PSCustomObject]@{
-			path       = $path
-			fileLocked = $fileLocked
-		}
+	} catch { $fileLocked = $false }
+
+	#結果の返却
+	return [PSCustomObject]@{
+		path       = $path
+		fileLocked = $fileLocked
 	}
 }
 
@@ -395,24 +373,23 @@ function Unlock-File {
 	[CmdletBinding()]
 	[OutputType([PSCustomObject])]
 	Param (
-		[parameter(Mandatory = $true, Position = 0)][System.IO.FileInfo]$path
+		[parameter(Mandatory = $true)][System.IO.FileInfo]$path
 	)
 
 	Write-Debug ('{0} - {1}' -f $MyInvocation.MyCommand.Name, $path)
 
 	$fileLocked = $true
 	try {
-		# close stream if not lock
+		#ロックされていなければストリームを閉じる
 		if ($script:fileStream) { $script:fileStream.Close() }
 		$script:fileStream.Dispose()
 		$fileLocked = $false
-	} catch { $fileLocked = $true
-	} finally {
-		# return result
-		[PSCustomObject]@{
-			path       = $path
-			fileLocked = $fileLocked
-		}
+	} catch { $fileLocked = $true }
+
+	#結果の返却
+	return [PSCustomObject]@{
+		path       = $path
+		fileLocked = $fileLocked
 	}
 }
 
@@ -423,26 +400,25 @@ function Get-FileLockStatus {
 	[CmdletBinding()]
 	[OutputType([PSCustomObject])]
 	Param (
-		[parameter(Mandatory = $true, Position = 0)][System.IO.FileInfo]$path
+		[parameter(Mandatory = $true)][System.IO.FileInfo]$path
 	)
 
 	Write-Debug ('{0} - {1}' -f $MyInvocation.MyCommand.Name, $path)
 
 	$fileLocked = $true
 	try {
-		# attempt to open file and detect file lock
+		#ファイルを開こうとしファイルロックを検出
 		$fileInfo = New-Object System.IO.FileInfo $path
 		$fileStream = $fileInfo.Open([System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
-		# close stream if not lock
+		#ロックされていなければストリームを閉じる
 		if ($fileStream) { $fileStream.Close() }
 		$fileLocked = $false
-	} catch { $fileLocked = $true
-	} finally {
-		# return result
-		[PSCustomObject]@{
-			path       = $path
-			fileLocked = $fileLocked
-		}
+	} catch { $fileLocked = $true }
+
+	#結果の返却
+	return [PSCustomObject]@{
+		path       = $path
+		fileLocked = $fileLocked
 	}
 }
 
@@ -457,10 +433,10 @@ function Out-Msg-Color {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $false, Position = 0)][Object]$text = '',
-		[Parameter(Mandatory = $false, Position = 1)][ConsoleColor]$fg,
-		[Parameter(Mandatory = $false, Position = 2)][ConsoleColor]$bg,
-		[Parameter(Mandatory = $false, Position = 3)][Boolean]$noNL
+		[Parameter(Mandatory = $false)][Object]$text = '',
+		[Parameter(Mandatory = $false)][ConsoleColor]$fg,
+		[Parameter(Mandatory = $false)][ConsoleColor]$bg,
+		[Parameter(Mandatory = $false)][Boolean]$noNL
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -488,17 +464,24 @@ function Out-Msg-Color {
 #Toast用AppID取得に必要
 if (($script:disableToastNotification -ne $true) -and ($IsWindows)) { Import-Module StartLayout -SkipEditionCheck }
 
+#モジュールのインポート
+if (!$script:disableToastNotification -and $IsWindows -and (!('Microsoft.Toolkit.Uwp.Notifications.ToastContentBuilder' -as [Type]))) {
+	Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/Microsoft.Windows.SDK.NET.dll')
+	Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/WinRT.Runtime.dll')
+	Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/Microsoft.Toolkit.Uwp.Notifications.dll')
+}
+
 #----------------------------------------------------------------------
 #トースト表示
 #----------------------------------------------------------------------
-function Show-Toast {
+function Show-GeneralToast {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$text1,
-		[Parameter(Mandatory = $false, Position = 1)][String]$text2 = '',
-		[Parameter(Mandatory = $false, Position = 2)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
-		[Parameter(Mandatory = $false, Position = 4)][Boolean]$silent = $false
+		[Parameter(Mandatory = $true )][String]$text1,
+		[Parameter(Mandatory = $false)][String]$text2 = '',
+		[Parameter(Mandatory = $false)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
+		[Parameter(Mandatory = $false)][Boolean]$silent = $false
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -508,12 +491,6 @@ function Show-Toast {
 			$IsWindows {
 				$toastSoundElement = if ($silent) { '<audio silent="true" />' }
 				else { '<audio src="ms-winsoundevent:Notification.Default" loop="false"/>' }
-
-				if (-not ('Microsoft.Toolkit.Uwp.Notifications.ToastContentBuilder' -as [Type])) {
-					Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/Microsoft.Windows.SDK.NET.dll')
-					Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/WinRT.Runtime.dll')
-					Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/Microsoft.Toolkit.Uwp.Notifications.dll')
-				}
 				$toastProgressContent = @"
 <?xml version="1.0" encoding="utf-8"?>
 <toast duration="$duration">
@@ -550,8 +527,6 @@ function Show-Toast {
 	}
 }
 
-
-
 #----------------------------------------------------------------------
 #進捗バー付きトースト表示
 #----------------------------------------------------------------------
@@ -559,13 +534,13 @@ function Show-ProgressToast {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$text1,
-		[Parameter(Mandatory = $false, Position = 1)][String]$text2 = '',
-		[Parameter(Mandatory = $false, Position = 2)][String]$workDetail = '',
-		[Parameter(Mandatory = $true, Position = 3)][String]$tag,
-		[Parameter(Mandatory = $true, Position = 4)][String]$group,
-		[Parameter(Mandatory = $false, Position = 5)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
-		[Parameter(Mandatory = $false, Position = 6)][Boolean]$silent = $false
+		[Parameter(Mandatory = $true )][String]$text1,
+		[Parameter(Mandatory = $false)][String]$text2 = '',
+		[Parameter(Mandatory = $false)][String]$workDetail = '',
+		[Parameter(Mandatory = $true )][String]$tag,
+		[Parameter(Mandatory = $true )][String]$group,
+		[Parameter(Mandatory = $false)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
+		[Parameter(Mandatory = $false)][Boolean]$silent = $false
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -575,12 +550,6 @@ function Show-ProgressToast {
 			$IsWindows {
 				$toastSoundElement = if ($silent) { '<audio silent="true" />' }
 				else { '<audio src="ms-winsoundevent:Notification.Default" loop="false"/>' }
-
-				if (-not ('Microsoft.Toolkit.Uwp.Notifications.ToastContentBuilder' -as [Type])) {
-					Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/Microsoft.Windows.SDK.NET.dll')
-					Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/WinRT.Runtime.dll')
-					Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/Microsoft.Toolkit.Uwp.Notifications.dll')
-				}
 				$toastContent = @"
 <?xml version="1.0" encoding="utf-8"?>
 <toast duration="$duration">
@@ -628,7 +597,6 @@ function Show-ProgressToast {
 	}
 }
 
-
 #----------------------------------------------------------------------
 #進捗バー付きトースト更新
 #----------------------------------------------------------------------
@@ -636,12 +604,12 @@ function Update-ProgressToast {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $false, Position = 0)][String]$title = '',
-		[Parameter(Mandatory = $true, Position = 1)][String]$rate,
-		[Parameter(Mandatory = $false, Position = 2)][String]$leftText = '',
-		[Parameter(Mandatory = $false, Position = 3)][String]$rightText = '',
-		[Parameter(Mandatory = $true, Position = 4)][String]$tag,
-		[Parameter(Mandatory = $true, Position = 5)][String]$group
+		[Parameter(Mandatory = $false)][String]$title = '',
+		[Parameter(Mandatory = $true )][String]$rate,
+		[Parameter(Mandatory = $false)][String]$leftText = '',
+		[Parameter(Mandatory = $false)][String]$rightText = '',
+		[Parameter(Mandatory = $true )][String]$tag,
+		[Parameter(Mandatory = $true )][String]$group
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
@@ -666,38 +634,35 @@ function Update-ProgressToast {
 	}
 }
 
-
 #----------------------------------------------------------------------
-#進捗バー付きトースト表示
+#進捗表示(2行進捗バー)
 #----------------------------------------------------------------------
-function Show-ProgressToast2 {
+function Show-ProgressToast2Row {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$text1,
-		[Parameter(Mandatory = $false, Position = 1)][String]$text2 = '',
-		[Parameter(Mandatory = $false, Position = 2)][String]$detail1 = '',
-		[Parameter(Mandatory = $false, Position = 3)][String]$detail2 = '',
-		[Parameter(Mandatory = $true, Position = 4)][String]$tag,
-		[Parameter(Mandatory = $true, Position = 5)][String]$group,
-		[Parameter(Mandatory = $false, Position = 6)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
-		[Parameter(Mandatory = $false, Position = 7)][Boolean]$silent = $false
+		[Parameter(Mandatory = $true )][String]$text1,
+		[Parameter(Mandatory = $false)][String]$text2 = '',
+		[Parameter(Mandatory = $false)][String]$detail1 = '',
+		[Parameter(Mandatory = $false)][String]$detail2 = '',
+		[Parameter(Mandatory = $true )][String]$tag,
+		[Parameter(Mandatory = $false)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
+		[Parameter(Mandatory = $false)][Boolean]$silent = $false,
+		[Parameter(Mandatory = $true )][String]$group
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
+	if ($script:disableToastNotification -ne $true) {
+		$text2 = $text2 ?? ''
+		$detail1 = $detail1 ?? ''
+		$detail2 = $detail2 ?? ''
 
-	switch ($true) {
-		$IsWindows {
-			$toastSoundElement = if ($silent) { '<audio silent="true" />' } else { '<audio src="ms-winsoundevent:Notification.Default" loop="false"/>' }
-			$duration = if (!$duration) { 'short' } else { $duration }
-			$toastAttribution = ''
-			if (-not ('Microsoft.Toolkit.Uwp.Notifications.ToastContentBuilder' -as [Type])) {
-				#For PowerShell Core v6.x & PowerShell v7+
-				Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/Microsoft.Windows.SDK.NET.dll')
-				Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/WinRT.Runtime.dll')
-				Add-Type -LiteralPath (Join-Path $script:libDir 'win/core/Microsoft.Toolkit.Uwp.Notifications.dll')
-			}
-			$toastContent = @"
+		switch ($true) {
+			$IsWindows {
+				$toastSoundElement = if ($silent) { '<audio silent="true" />' } else { '<audio src="ms-winsoundevent:Notification.Default" loop="false"/>' }
+				$duration = if (!$duration) { 'short' } else { $duration }
+				$toastAttribution = ''
+				$toastContent = @"
 <?xml version="1.0" encoding="utf-8"?>
 <toast duration="$duration">
 	<visual>
@@ -714,162 +679,105 @@ function Show-ProgressToast2 {
 	$toastSoundElement
 </toast>
 "@
-			$toastXML = New-Object Windows.Data.Xml.Dom.XmlDocument
-			$toastXML.LoadXml($toastContent)
-			$toast = New-Object Windows.UI.Notifications.ToastNotification $toastXML
-			$toast.Tag = $tag
-			$toast.Group = $group
-			$toastData = New-Object 'system.collections.generic.dictionary[String,string]'
-			$toastData.Add('progressTitle1', $detail1)
-			$toastData.Add('progressValue1', '')
-			$toastData.Add('progressValueString1', '')
-			$toastData.Add('progressStatus1', '')
-			$toastData.Add('progressTitle2', $detail2)
-			$toastData.Add('progressValue2', '')
-			$toastData.Add('progressValueString2', '')
-			$toastData.Add('progressStatus2', '')
-			$toast.Data = [Windows.UI.Notifications.NotificationData]::new($toastData)
-			$toast.Data.SequenceNumber = 1
-			$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($script:appID).Show($toast)
-			continue
-		}
-		$IsLinux {
-			if (Get-Command notify-send -ea SilentlyContinue) { & notify-send -a $script:appName -t 5000 -i $script:toastAppLogo $text1 $text2 }
-			continue
-		}
-		$IsMacOS {
-			if (Get-Command osascript -ea SilentlyContinue) {
-				$toastParams = ('display notification "{0}" with title "{1}" subtitle "{2}" sound name "Blow"' -f $text2, $script:appName, $text1)
-				$toastParams | & osascript
-			}
-			continue
-		}
-		default { continue }
-	}
-}
-
-#----------------------------------------------------------------------
-#進捗バー付きトースト更新
-#----------------------------------------------------------------------
-function Update-ProgressToast2 {
-	[CmdletBinding()]
-	[OutputType([System.Void])]
-	Param (
-		[Parameter(Mandatory = $false, Position = 0)][String]$title1 = '',
-		[Parameter(Mandatory = $true, Position = 1)][String]$rate1,
-		[Parameter(Mandatory = $false, Position = 2)][String]$leftText1 = '',
-		[Parameter(Mandatory = $false, Position = 3)][String]$rightText1 = '',
-		[Parameter(Mandatory = $false, Position = 4)][String]$title2 = '',
-		[Parameter(Mandatory = $true, Position = 5)][String]$rate2,
-		[Parameter(Mandatory = $false, Position = 6)][String]$leftText2 = '',
-		[Parameter(Mandatory = $false, Position = 7)][String]$rightText2 = '',
-		[Parameter(Mandatory = $true, Position = 8)][String]$tag,
-		[Parameter(Mandatory = $true, Position = 9)][String]$group
-	)
-
-	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
-
-	if ($script:disableToastNotification -ne $true) {
-		switch ($true) {
-			$IsWindows {
+				$toastXML = New-Object Windows.Data.Xml.Dom.XmlDocument
+				$toastXML.LoadXml($toastContent)
+				$toast = New-Object Windows.UI.Notifications.ToastNotification $toastXML
+				$toast.Tag = $tag
+				$toast.Group = $group
 				$toastData = New-Object 'system.collections.generic.dictionary[String,string]'
-				$toastData.Add('progressTitle1', $title1)
-				$toastData.Add('progressValue1', $rate1)
-				$toastData.Add('progressValueString1', $rightText1)
-				$toastData.Add('progressStatus1', $leftText1)
-				$toastData.Add('progressTitle2', $title2)
-				$toastData.Add('progressValue2', $rate2)
-				$toastData.Add('progressValueString2', $rightText2)
-				$toastData.Add('progressStatus2', $leftText2)
-				$toastProgressData = [Windows.UI.Notifications.NotificationData]::new($toastData)
-				$toastProgressData.SequenceNumber = 2
-				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($script:appID).Update($toastProgressData, $tag , $group)
+				$toastData.Add('progressTitle1', $detail1)
+				$toastData.Add('progressValue1', '')
+				$toastData.Add('progressValueString1', '')
+				$toastData.Add('progressStatus1', '')
+				$toastData.Add('progressTitle2', $detail2)
+				$toastData.Add('progressValue2', '')
+				$toastData.Add('progressValueString2', '')
+				$toastData.Add('progressStatus2', '')
+				$toast.Data = [Windows.UI.Notifications.NotificationData]::new($toastData)
+				$toast.Data.SequenceNumber = 1
+				$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($script:appID).Show($toast)
 				continue
 			}
-			$IsLinux { continue }
-			$IsMacOS { continue }
+			$IsLinux {
+				if (Get-Command notify-send -ea SilentlyContinue) { & notify-send -a $script:appName -t 5000 -i $script:toastAppLogo $text1 $text2 }
+				continue
+			}
+			$IsMacOS {
+				if (Get-Command osascript -ea SilentlyContinue) {
+					$toastParams = ('display notification "{0}" with title "{1}" subtitle "{2}" sound name "Blow"' -f $text2, $script:appName, $text1)
+					$toastParams | & osascript
+				}
+				continue
+			}
 			default { continue }
 		}
+
 	}
 }
 
-
 #----------------------------------------------------------------------
-#進捗表示
+#進捗更新(2行進捗バー)
 #----------------------------------------------------------------------
-function Show-Progress2Row {
+function Update-ProgressToast2Row {
 	[CmdletBinding()]
 	[OutputType([System.Void])]
 	Param (
-		[Parameter(Mandatory = $true, Position = 0)][String]$text1,
-		[Parameter(Mandatory = $false, Position = 1)][String]$text2 = '',
-		[Parameter(Mandatory = $false, Position = 2)][String]$detail1 = '',
-		[Parameter(Mandatory = $false, Position = 3)][String]$detail2 = '',
-		[Parameter(Mandatory = $true, Position = 4)][String]$tag,
-		[Parameter(Mandatory = $false, Position = 5)][ValidateSet('Short', 'Long')][String]$duration = 'Short',
-		[Parameter(Mandatory = $false, Position = 6)][Boolean]$silent = $false,
-		[Parameter(Mandatory = $true, Position = 7)][String]$group
-	)
-
-	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
-	if ($script:disableToastNotification -ne $true) {
-		$text2 = $text2 ?? ''
-		$detail1 = $detail1 ?? ''
-		$detail2 = $detail2 ?? ''
-
-		Show-ProgressToast2 `
-			-Text1 $text1 `
-			-Text2 $text2 `
-			-Detail1 $detail1 `
-			-Detail2 $detail2 `
-			-Tag $tag `
-			-Group $group `
-			-Duration $duration `
-			-Silent $silent
-	}
-}
-
-
-#----------------------------------------------------------------------
-#進捗更新
-#----------------------------------------------------------------------
-function Update-Progress2Row {
-	[CmdletBinding()]
-	[OutputType([System.Void])]
-	Param (
-		[Parameter(Mandatory = $false, Position = 0)][String]$activity1 = '',
-		[Parameter(Mandatory = $false, Position = 1)][String]$processing1 = '',
-		[Parameter(Mandatory = $true, Position = 2)][String]$rate1,
-		[Parameter(Mandatory = $false, Position = 3)][String]$secRemaining1 = '-1',
-		[Parameter(Mandatory = $false, Position = 4)][String]$activity2 = '',
-		[Parameter(Mandatory = $false, Position = 5)][String]$processing2 = '',
-		[Parameter(Mandatory = $true, Position = 6)][String]$rate2,
-		[Parameter(Mandatory = $false, Position = 7)][String]$secRemaining2 = '-1',
-		[Parameter(Mandatory = $true, Position = 8)][String]$tag,
-		[Parameter(Mandatory = $true, Position = 9)][String]$group
+		[Parameter(Mandatory = $false)][String]$title1 = '',
+		[Parameter(Mandatory = $true )][String]$rate1,
+		[Parameter(Mandatory = $false)][String]$leftText1 = '',
+		[Parameter(Mandatory = $false)][String]$rightText1 = '',
+		[Parameter(Mandatory = $false)][String]$title2 = '',
+		[Parameter(Mandatory = $true )][String]$rate2,
+		[Parameter(Mandatory = $false)][String]$leftText2 = '',
+		[Parameter(Mandatory = $false)][String]$rightText2 = '',
+		[Parameter(Mandatory = $true )][String]$tag,
+		[Parameter(Mandatory = $true )][String]$group
 	)
 
 	Write-Debug ('{0}' -f $MyInvocation.MyCommand.Name)
 
-	if ($script:disableToastNotification -ne $true) {
-		$minRemaining1 = if ($secRemaining1 -eq '-1') { '' } else { ('残り時間 {0}分' -f ([Int][Math]::Ceiling($secRemaining1 / 60))) }
-		$minRemaining2 = if ($secRemaining2 -eq '-1') { '' } else { ('残り時間 {0}分' -f ([Int][Math]::Ceiling($secRemaining2 / 60))) }
+	if (!($script:disableToastNotification)) {
+		$rightText1 = switch ($rightText1 ) {
+			'' { '' }
+			'0' { '完了' }
+			default { ('残り時間 {0}分' -f ([Int][Math]::Ceiling($rightText1 / 60))) }
+		}
+		$rightText2 = switch ($rightText2 ) {
+			'' { '' }
+			'0' { '完了' }
+			default { ('残り時間 {0}分' -f ([Int][Math]::Ceiling($rightText2 / 60))) }
+		}
 
-		Update-ProgressToast2 `
-			-Title1 $processing1 `
-			-Rate1 $rate1 `
-			-LeftText1 $activity1 `
-			-RightText1 $minRemaining1 `
-			-Title2 $processing2 `
-			-Rate2 $rate2 `
-			-LeftText2 $activity2 `
-			-RightText2 $minRemaining2 `
-			-Tag $tag `
-			-Group $group
+		if ($script:disableToastNotification -ne $true) {
+			switch ($true) {
+				$IsWindows {
+					$toastData = New-Object 'system.collections.generic.dictionary[String,string]'
+					$toastData.Add('progressTitle1', $title1)
+					$toastData.Add('progressValue1', $rate1)
+					$toastData.Add('progressValueString1', $rightText1)
+					$toastData.Add('progressStatus1', $leftText1)
+					$toastData.Add('progressTitle2', $title2)
+					$toastData.Add('progressValue2', $rate2)
+					$toastData.Add('progressValueString2', $rightText2)
+					$toastData.Add('progressStatus2', $leftText2)
+					$toastProgressData = [Windows.UI.Notifications.NotificationData]::new($toastData)
+					$toastProgressData.SequenceNumber = 2
+					$null = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($script:appID).Update($toastProgressData, $tag , $group)
+					continue
+				}
+				$IsLinux { continue }
+				$IsMacOS { continue }
+				default { continue }
+			}
+		}
+
 	}
 }
 #endregion トースト通知
 
+#----------------------------------------------------------------------
+#Base64画像の展開
+#----------------------------------------------------------------------
 function ConvertFrom-Base64 {
 	param ($base64)
 	$img = New-Object System.Windows.Media.Imaging.BitmapImage

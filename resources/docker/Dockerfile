@@ -1,12 +1,11 @@
-FROM mcr.microsoft.com/powershell:ubuntu-22.04
+FROM ubuntu:jammy
 
 ENV POWERSHELL_TELEMETRY_OPTOUT=1
 
 LABEL org.opencontainers.image.title="TVerRec" \
 	org.opencontainers.image.source=https://github.com/dongaba/TVerRec \
 	org.opencontainers.image.authors="dongaba" \
-	org.opencontainers.image.licenses=MIT \
-	org.opencontainers.image.description="TVerRecは、TVerの番組をダウンロード保存するためのダウンロードツールです。番組のジャンルや出演タレント、番組名などを指定して一括ダウンロードします。CMは入っていないため気に入った番組を配信終了後も残しておくことができます。1回起動すれば新しい番組が配信される度にダウンロードされます。"
+	org.opencontainers.image.licenses=MIT
 
 #必要ソフトのインストール
 RUN	apt-get update \
@@ -16,15 +15,26 @@ RUN	apt-get update \
 	bash \
 	python3 \
 	xz-utils \
+	wget \
+	apt-transport-https \
+	software-properties-common \
+	jq \
+	libssl-dev \
+	libunwind8 \
 	&& apt-get autoremove -y \
-	&& apt-get clean -y \
+	&& apt-get clean -y  \
 	&& rm -rf /var/lib/apt/lists/*
-
-#User追加
-ARG UID=1000 \
-	GID=1000
-RUN groupadd -g "$GID" tverrec \
-	&& useradd -l -m -s /bin/bash -u "$UID" -g "$GID" tverrec
+#Powershellのダウンロードと配置
+RUN /bin/bash -c ' \
+	arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/x64/ | sed s/amd64/x64/) ; \
+	release=$(curl -sL https://api.github.com/repos/PowerShell/PowerShell/releases/latest) ; \
+	package=$(echo $release | jq -r ".assets[].browser_download_url" | grep "linux-${arch}.tar.gz") ; \
+	wget $package ; \
+	mkdir -p /opt/microsoft/powershell ; \
+	tar -xvf "./${package##*/}" -C /opt/microsoft/powershell ; \
+	ln -s /opt/microsoft/powershell/pwsh /usr/bin/pwsh ; \
+	rm -rf "./${package##*/}" \
+	'
 
 #ディレクトリ準備
 RUN mkdir -p -m 777 \
@@ -32,9 +42,6 @@ RUN mkdir -p -m 777 \
 	/mnt/Temp \
 	/mnt/Work \
 	/mnt/Save
-
-#ユーザ切り替え
-USER tverrec
 
 #TVerRecのインストール
 WORKDIR /app

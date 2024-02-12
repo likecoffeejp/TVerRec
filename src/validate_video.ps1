@@ -2,27 +2,6 @@
 #
 #		番組整合性チェック処理スクリプト
 #
-#	Copyright (c) 2022 dongaba
-#
-#	Licensed under the MIT License;
-#	Permission is hereby granted, free of charge, to any person obtaining a copy
-#	of this software and associated documentation files (the "Software"), to deal
-#	in the Software without restriction, including without limitation the rights
-#	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#	copies of the Software, and to permit persons to whom the Software is
-#	furnished to do so, subject to the following conditions:
-#
-#	The above copyright notice and this permission notice shall be included in
-#	all copies or substantial portions of the Software.
-#
-#	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#	THE SOFTWARE.
-#
 ###################################################################################
 
 try { $script:guiMode = [String]$args[0] } catch { $script:guiMode = '' }
@@ -34,8 +13,8 @@ Set-StrictMode -Version Latest
 #----------------------------------------------------------------------
 #初期化
 try {
-	if ($script:myInvocation.MyCommand.CommandType -ne 'ExternalScript') { $script:scriptRoot = Convert-Path . }
-	else { $script:scriptRoot = Split-Path -Parent -Path $script:myInvocation.MyCommand.Definition }
+	if ($myInvocation.MyCommand.CommandType -ne 'ExternalScript') { $script:scriptRoot = Convert-Path . }
+	else { $script:scriptRoot = Split-Path -Parent -Path $myInvocation.MyCommand.Definition }
 	Set-Location $script:scriptRoot
 } catch { Write-Error ('❗ カレントディレクトリの設定に失敗しました') ; exit 1 }
 if ($script:scriptRoot.Contains(' ')) { Write-Error ('❗ TVerRecはスペースを含むディレクトリに配置できません') ; exit 1 }
@@ -46,8 +25,6 @@ try {
 
 #━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #メイン処理
-
-#設定で指定したファイル・ディレクトリの存在チェック
 Invoke-RequiredFileCheck
 
 #======================================================================
@@ -55,14 +32,16 @@ Invoke-RequiredFileCheck
 Write-Output ('')
 Write-Output ('----------------------------------------------------------------------')
 Write-Output ('ダウンロード履歴の不整合レコードを削除します')
-Show-ProgressToast `
-	-Text1 'ダウンロードファイルの整合性検証中' `
-	-Text2 '　処理1/5 - 破損レコードを削除' `
-	-WorkDetail '' `
-	-Tag $script:appName `
-	-Group 'Validate' `
-	-Duration 'long' `
-	-Silent $false
+
+$toastShowParams = @{
+	Text1      = 'ダウンロードファイルの整合性検証中'
+	Text2      = '　処理1/5 - 破損レコードを削除'
+	WorkDetail = ''
+	Tag        = $script:appName
+	Silent     = $false
+	Group      = 'Validate'
+}
+Show-ProgressToast @toastShowParams
 
 #ダウンロード履歴の破損レコード削除
 Optimize-HistoryFile
@@ -70,14 +49,9 @@ Optimize-HistoryFile
 Write-Output ('')
 Write-Output ('----------------------------------------------------------------------')
 Write-Output ('古いダウンロード履歴を削除します')
-Show-ProgressToast `
-	-Text1 'ダウンロードファイルの整合性検証中' `
-	-Text2 ('　処理2/5 - {0}日以上前のダウンロード履歴を削除' -f $script:histRetentionPeriod) `
-	-WorkDetail '' `
-	-Tag $script:appName `
-	-Group 'Validate' `
-	-Duration 'long' `
-	-Silent $false
+
+$toastShowParams.Text2 = ('　処理2/5 - {0}日以上前のダウンロード履歴を削除' -f $script:histRetentionPeriod)
+Show-ProgressToast @toastShowParams
 
 #指定日以上前に処理したものはダウンロード履歴から削除
 Limit-HistoryFile -RetentionPeriod $script:histRetentionPeriod
@@ -85,14 +59,9 @@ Limit-HistoryFile -RetentionPeriod $script:histRetentionPeriod
 Write-Output ('')
 Write-Output ('----------------------------------------------------------------------')
 Write-Output ('ダウンロード履歴の重複レコードを削除します')
-Show-ProgressToast `
-	-Text1 'ダウンロードファイルの整合性検証中' `
-	-Text2 '　処理3/5 - ダウンロード履歴の重複レコードを削除' `
-	-WorkDetail '' `
-	-Tag $script:appName `
-	-Group 'Validate' `
-	-Duration 'long' `
-	-Silent $false
+
+$toastShowParams.Text2 = '　処理3/5 - ダウンロード履歴の重複レコードを削除'
+Show-ProgressToast @toastShowParams
 
 #ダウンロード履歴の重複削除
 Repair-HistoryFile
@@ -143,14 +112,11 @@ while ($videoNotValidatedNum -ne 0) {
 			}
 			$decodeOption = $script:ffmpegDecodeOption
 		}
-		Show-ProgressToast `
-			-Text1 'ダウンロードファイルの整合性検証中' `
-			-Text2 '　処理4/5 - ファイルを検証' `
-			-WorkDetail '残り時間計算中' `
-			-Tag $script:appName `
-			-Group 'Validate' `
-			-Duration 'long' `
-			-Silent $false
+
+		$toastShowParams.Text2 = '　処理4/5 - ファイルを検証'
+		$toastShowParams.WorkDetail = '残り時間計算中'
+		Show-ProgressToast @toastShowParams
+
 		#----------------------------------------------------------------------
 		$totalStartTime = Get-Date
 		$validateNum = 0
@@ -161,22 +127,27 @@ while ($videoNotValidatedNum -ne 0) {
 			$secRemaining = -1
 			if ($validateNum -ne 0) {
 				$secRemaining = [Int][Math]::Ceiling(($secElapsed.TotalSeconds / $validateNum) * ($validateTotal - $validateNum))
-				$minRemaining = ('{0}分' -f ([Int][Math]::Ceiling($secRemaining / 60)))
+				$minRemaining = ('残り時間 {0}分' -f ([Int][Math]::Ceiling($secRemaining / 60)))
 				$progressRate = [Float]($validateNum / $validateTotal)
 			} else {
 				$minRemaining = ''
 				$progressRate = 0
 			}
 			$validateNum += 1
-			Update-ProgressToast `
-				-Title $videoFileRelPath `
-				-Rate $progressRate `
-				-LeftText $validateNum/$validateTotal `
-				-RightText ('残り時間 {0}' -f $minRemaining) `
-				-Tag $script:appName `
-				-Group 'Validate'
-			if (Test-Path $script:downloadBaseDir -PathType Container) {}
-			else { Write-Error ('❗ 番組ダウンロード先ディレクトリにアクセスできません。終了します。') ; exit 1 }
+
+			$toastUpdateParams = @{
+				Title     = $videoFileRelPath
+				Rate      = $progressRate
+				LeftText  = ('{0}/{1}' -f $validateNum, $validateTotal)
+				RightText = $minRemaining
+				Tag       = $script:appName
+				Group     = 'Validate'
+			}
+			Update-ProgressToast @toastUpdateParams
+
+			if (!(Test-Path $script:downloadBaseDir -PathType Container)) {
+				Write-Error ('❗ 番組ダウンロード先ディレクトリにアクセスできません。終了します。') ; exit 1
+			}
 			#番組の整合性チェック
 			Write-Output ('{0}/{1} - {2}' -f $validateNum, $validateTotal, $videoFileRelPath)
 			Invoke-ValidityCheck `
@@ -192,14 +163,11 @@ while ($videoNotValidatedNum -ne 0) {
 	Write-Output ('')
 	Write-Output ('----------------------------------------------------------------------')
 	Write-Output ('ダウンロード履歴から検証が終わっていない番組のステータスを変更します')
-	Show-ProgressToast `
-		-Text1 'ダウンロードファイルの整合性検証中' `
-		-Text2 '　処理5/5 - 未検証のファイルのステータスを変更' `
-		-WorkDetail '' `
-		-Tag $script:appName `
-		-Group 'Validate' `
-		-Duration 'long' `
-		-Silent $false
+
+	$toastShowParams.Text2 = '　処理5/5 - 未検証のファイルのステータスを変更'
+	$toastShowParams.WorkDetail = ''
+	Show-ProgressToast @toastShowParams
+
 	try {
 		while ((Lock-File $script:histLockFilePath).fileLocked -ne $true) { Write-Warning ('ファイルのロック解除待ち中です') ; Start-Sleep -Seconds 1 }
 		$videoHists = @(Import-Csv -Path $script:histFilePath -Encoding UTF8)
@@ -214,13 +182,15 @@ while ($videoNotValidatedNum -ne 0) {
 
 #======================================================================
 #完了処理
-Update-ProgressToast `
-	-Title 'ダウンロードファイルの整合性検証' `
-	-Rate '1' `
-	-LeftText '' `
-	-RightText '完了' `
-	-Tag $script:appName `
-	-Group 'Validate'
+$toastUpdateParams = @{
+	Title     = 'ダウンロードファイルの整合性検証中'
+	Rate      = '1'
+	LeftText  = ''
+	RightText = '完了'
+	Tag       = $script:appName
+	Group     = 'Validate'
+}
+Update-ProgressToast @toastUpdateParams
 
 Invoke-GarbageCollection
 
