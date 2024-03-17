@@ -121,6 +121,8 @@ function Save-UserSetting {
 				($settingBox.Text -eq 'しない') { $newSetting += ('{0} = {1}' -f $settingAttribute, '$false') ; continue }
 				#数値
 				( [Int]::TryParse($settingBox.Text, [ref]$null) ) { $newSetting += ('{0} = {1}' -f $settingAttribute, $settingBox.Text) ; continue }
+				#%( はシングルクォーテーション必要とする
+				($local:settingBox.Text.Contains('%(')) {	$newSetting += ('{0} = ''{1}''' -f $settingAttribute, $settingBox.Text) ; continue }
 				#Powershellの変数や関数等を含む場合はシングルクォーテーション不要
 				($local:settingBox.Text.Contains('$') `
 					-or $local:settingBox.Text.Contains('{') `
